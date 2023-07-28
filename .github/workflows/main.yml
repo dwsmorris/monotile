@@ -17,18 +17,9 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build
-        run: npx webpack --mode production
+        run: npx webpack
       - name: Deploy to GitHub Pages
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions@github.com"
-          git checkout -b gh-pages-temp
-          mv ./dist/* .
-          git add .
-          git commit -m "Deploy to GitHub Pages"
-          git push origin gh-pages-temp:gh-pages --force
-          git checkout main
-          git branch -D gh-pages-temp
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.MOSAICA_TOKEN }}
-          publish_dir: ./
+          publish_dir: ./dist/
