@@ -29,3 +29,6 @@ jobs:
           git push origin gh-pages-temp:gh-pages --force
           git checkout main
           git branch -D gh-pages-temp
+        with:
+          github_token: ${{ secrets.MOSAICA_TOKEN }}
+          publish_dir: ./
