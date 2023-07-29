@@ -5,6 +5,10 @@ const StyledSvg = styled.svg`
 	> circle {
 		fill: red;
 	}
+	> line.axis {
+		stroke: black;
+		stroke-width: 0.5;
+	}
 `;
 const maxY = 200;
 
@@ -40,6 +44,10 @@ export default () => {
 		width="100%"
 		height="100vh"
 		viewBox={`${-maxX} ${-maxY} ${2 * maxX} ${2 * maxY}`}>
+
+		{/* horizontal axes */}
+		{[-1, 0, 1].map(offset => <line className={`axis horizontal-${offset}`} x1={-maxX} y1={offset * 100} x2={maxX} y2={offset * 100}/>)}
+
 		<circle cx="0" cy="0" r="5"/>
 	</StyledSvg>;
 };
