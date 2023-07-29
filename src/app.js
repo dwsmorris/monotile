@@ -1,5 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import styled from "styled-components";
+import {Stage, Layer, Circle, Line} from "react-konva";
 
 const StyledSvg = styled.svg`
 	> circle {
@@ -10,16 +11,17 @@ const StyledSvg = styled.svg`
 		stroke-width: 0.3;
 	}
 `;
-const maxY = 100;
+const maxY = 1;
 
 export default () => {
 	const [windowSize, setWindowSize] = useState({
 		width: window.innerWidth,
 		height: window.innerHeight,
 	});
-	const aspect = windowSize.width / windowSize.height;
-	const maxX = aspect * maxY;
-	const maxCellLineX = Math.floor(maxX / 100);
+	const maxX = windowSize.width / windowSize.height;
+	const maxCellLineX = Math.floor(maxX);
+	const halfHeight = windowSize.height / 2;
+	const halfWidth = windowSize.width / 2;
 
 	useEffect(() => {
 		const handleResize = () => {
@@ -41,20 +43,15 @@ export default () => {
 		};
 	}, []); // Empty dependency array to ensure this effect only runs once
 
+	return <Stage width={windowSize.width} height={windowSize.height}>
+		<Layer>
+			{/* horizontal axis */}
+			<Line points={[0, halfHeight, windowSize.width, halfHeight]} stroke="black" strokeWidth={0.3}/>
 
-	return <StyledSvg
-		className="svg"
-		xmlns="http://www.w3.org/2000/svg"
-		width="100%"
-		height="100vh"
-		viewBox={`${-maxX} ${-maxY} ${2 * maxX} ${2 * maxY}`}>
+			{/* vertical axes */}
+			{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line  stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x, 0, x, windowSize.height]}/>)(halfWidth + (offset * halfHeight)))}
 
-		{/* horizontal axes */}
-		{[0].map(offset => <line className="axis" key={`horizontal-${offset}`} x1={-maxX} y1={offset * 100} x2={maxX} y2={offset * 100}/>)}
-
-		{/* vertical axes */}
-		{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => <line className="axis" key={`vertical-${offset}`} x1={offset * 100} y1={-maxY} x2={offset * 100} y2={maxY}/>)}
-
-		<circle cx="0" cy="0" r="3"/>
-	</StyledSvg>;
+			<Circle x={windowSize.width / 2} y={windowSize.height / 2} radius={10} fill="red"/>
+		</Layer>
+	</Stage>
 };
