@@ -18,10 +18,15 @@ export default () => {
 		width: window.innerWidth,
 		height: window.innerHeight,
 	});
-	const maxX = windowSize.width / windowSize.height;
-	const maxCellLineX = Math.floor(maxX);
 	const halfHeight = windowSize.height / 2;
 	const halfWidth = windowSize.width / 2;
+	const [center, setCenter] = useState({
+		x: halfWidth,
+		y: halfHeight,
+	});
+	const [isMouseDown, setIsMouseDown] = useState(false);
+	const maxX = windowSize.width / windowSize.height;
+	const maxCellLineX = Math.floor(maxX);
 
 	useEffect(() => {
 		const handleResize = () => {
@@ -43,7 +48,13 @@ export default () => {
 		};
 	}, []); // Empty dependency array to ensure this effect only runs once
 
-	return <Stage width={windowSize.width} height={windowSize.height}>
+	return <Stage
+		width={windowSize.width}
+		height={windowSize.height}
+		onMouseDown={e => {setCenter({x: e.evt.clientX, y: e.evt.clientY}); setIsMouseDown(true);}}
+		onMouseUp={() => setIsMouseDown(false)}
+		onMouseMove={e => {if (isMouseDown) setCenter({x: e.evt.clientX, y: e.evt.clientY});}}
+	>
 		<Layer>
 			{/* horizontal axis */}
 			<Line points={[0, halfHeight, windowSize.width, halfHeight]} stroke="black" strokeWidth={0.3}/>
@@ -51,7 +62,7 @@ export default () => {
 			{/* vertical axes */}
 			{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line  stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x, 0, x, windowSize.height]}/>)(halfWidth + (offset * halfHeight)))}
 
-			<Circle x={windowSize.width / 2} y={windowSize.height / 2} radius={10} fill="red"/>
+			<Circle x={center.x} y={center.y} radius={10} fill="red"/>
 		</Layer>
 	</Stage>
 };
