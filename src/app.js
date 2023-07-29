@@ -7,10 +7,10 @@ const StyledSvg = styled.svg`
 	}
 	> line.axis {
 		stroke: black;
-		stroke-width: 0.5;
+		stroke-width: 0.3;
 	}
 `;
-const maxY = 200;
+const maxY = 100;
 
 export default () => {
 	const [windowSize, setWindowSize] = useState({
@@ -19,6 +19,7 @@ export default () => {
 	});
 	const aspect = windowSize.width / windowSize.height;
 	const maxX = aspect * maxY;
+	const maxCellLineX = Math.floor(maxX);
 
 	useEffect(() => {
 		const handleResize = () => {
@@ -46,8 +47,11 @@ export default () => {
 		viewBox={`${-maxX} ${-maxY} ${2 * maxX} ${2 * maxY}`}>
 
 		{/* horizontal axes */}
-		{[-1, 0, 1].map(offset => <line className={`axis horizontal-${offset}`} x1={-maxX} y1={offset * 100} x2={maxX} y2={offset * 100}/>)}
+		{[0].map(offset => <line className={`axis horizontal-${offset}`} x1={-maxX} y1={offset * 100} x2={maxX} y2={offset * 100}/>)}
 
-		<circle cx="0" cy="0" r="5"/>
+		{/* vertical axes */}
+		{Array.from({length: maxCellLineX * 2}, (_, index) => index - maxCellLineX).map(offset => <line className={`axis vertical-${offset}`} x1={offset * 100} y1={-maxY} x2={offset * 100} y2={maxY}/>)}
+
+		<circle cx="0" cy="0" r="3"/>
 	</StyledSvg>;
 };
