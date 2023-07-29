@@ -19,13 +19,16 @@ export default () => {
 	});
 	const aspect = windowSize.width / windowSize.height;
 	const maxX = aspect * maxY;
-	const maxCellLineX = Math.floor(maxX);
+	const maxCellLineX = Math.floor(maxX / 100);
 
 	useEffect(() => {
 		const handleResize = () => {
-			setWindowSize({
-				width: window.innerWidth,
-				height: window.innerHeight,
+			// Use requestAnimationFrame to schedule the update
+			requestAnimationFrame(() => {
+				setWindowSize({
+					width: window.innerWidth,
+					height: window.innerHeight,
+				});
 			});
 		};
 
@@ -47,10 +50,10 @@ export default () => {
 		viewBox={`${-maxX} ${-maxY} ${2 * maxX} ${2 * maxY}`}>
 
 		{/* horizontal axes */}
-		{[0].map(offset => <line className={`axis horizontal-${offset}`} x1={-maxX} y1={offset * 100} x2={maxX} y2={offset * 100}/>)}
+		{[0].map(offset => <line className="axis" key={`horizontal-${offset}`} x1={-maxX} y1={offset * 100} x2={maxX} y2={offset * 100}/>)}
 
 		{/* vertical axes */}
-		{Array.from({length: maxCellLineX * 2}, (_, index) => index - maxCellLineX).map(offset => <line className={`axis vertical-${offset}`} x1={offset * 100} y1={-maxY} x2={offset * 100} y2={maxY}/>)}
+		{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => <line className="axis" key={`vertical-${offset}`} x1={offset * 100} y1={-maxY} x2={offset * 100} y2={maxY}/>)}
 
 		<circle cx="0" cy="0" r="3"/>
 	</StyledSvg>;
