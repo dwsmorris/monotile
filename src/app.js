@@ -1,16 +1,6 @@
 import React, {useState, useEffect, useRef} from 'react';
-import styled from "styled-components";
 import {Stage, Layer, Circle, Line} from "react-konva";
 
-const StyledSvg = styled.svg`
-	> circle {
-		fill: red;
-	}
-	> line.axis {
-		stroke: black;
-		stroke-width: 0.3;
-	}
-`;
 const maxY = 1;
 
 export default () => {
@@ -24,7 +14,6 @@ export default () => {
 		x: halfWidth,
 		y: halfHeight,
 	});
-	const mouseDownRef = useRef(false);
 	const [isMouseDown, setIsMouseDown] = useState(false);
 	const maxX = windowSize.width / windowSize.height;
 	const maxCellLineX = Math.floor(maxX);
