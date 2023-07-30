@@ -24,11 +24,13 @@ export default () => {
 		x: halfWidth,
 		y: halfHeight,
 	});
+	const mouseDownRef = useRef(false);
 	const [isMouseDown, setIsMouseDown] = useState(false);
 	const maxX = windowSize.width / windowSize.height;
 	const maxCellLineX = Math.floor(maxX);
 	const animationStartTimeRef = useRef(0);
 	const targetRef = useRef({x: halfWidth, y: halfHeight});
+	const animationFrameRef = useRef();
 
 	useEffect(() => {
 		const handleResize = () => {
@@ -51,8 +53,6 @@ export default () => {
 	}, []); // Empty dependency array to ensure this effect only runs once
 
 	useEffect(() => {
-		let animationFrameId;
-
 		const animateLocus = () => {
 			const currentTime = Date.now();
 			const deltaTime = currentTime - animationStartTimeRef.current;
@@ -67,23 +67,24 @@ export default () => {
 					x: locus.x + (targetRef.current.x - locus.x) * progress,
 					y: locus.y + (targetRef.current.y - locus.y) * progress,
 				});
-
-				// continue animation
-				animationFrameId = requestAnimationFrame(animateLocus);
 			} else {
 				setLocus({
 					x: targetRef.current.x,
 					y: targetRef.current.y,
 				});
 			}
+
+			// continue animation
+			if (isMouseDown) animationFrameRef.current = requestAnimationFrame(animateLocus);
 		};
 
 		if (isMouseDown) {
+			animationFrameRef.current = requestAnimationFrame(animateLocus);
 			animationStartTimeRef.current = Date.now();
-			animationFrameId = requestAnimationFrame(animateLocus);
 		}
+		else cancelAnimationFrame(animationFrameRef.current);
 
-		return () => cancelAnimationFrame(animationFrameId);
+		return () => cancelAnimationFrame(animationFrameRef.current);
 	}, [isMouseDown]);
 
 	return <Stage
@@ -91,7 +92,7 @@ export default () => {
 		height={windowSize.height}
 		onMouseDown={e => {targetRef.current = {x: e.evt.clientX, y: e.evt.clientY}; setIsMouseDown(true);}}
 		onMouseUp={() => setIsMouseDown(false)}
-		onMouseMove={e => {if (isMouseDown) {targetRef.current = {x: e.evt.clientX, y: e.evt.clientY};}}}
+		onMouseMove={e => {if (isMouseDown) targetRef.current = {x: e.evt.clientX, y: e.evt.clientY};}}
 	>
 		<Layer>
 			{/* horizontal axis */}
