@@ -3,6 +3,7 @@ import {Stage, Layer, Circle, Line} from "react-konva";
 
 const maxY = 1;
 
+const timeToSync = 500; //ms
 export default () => {
 	const [windowSize, setWindowSize] = useState({
 		width: window.innerWidth,
@@ -13,12 +14,11 @@ export default () => {
 	const [locus, setLocus] = useState({
 		x: halfWidth,
 		y: halfHeight,
+		time: Date.now(),
 	});
-	const [isMouseDown, setIsMouseDown] = useState(false);
 	const maxX = windowSize.width / windowSize.height;
 	const maxCellLineX = Math.floor(maxX);
-	const animationStartTimeRef = useRef(0);
-	const targetRef = useRef({x: halfWidth, y: halfHeight});
+	const targetRef = useRef({x: halfWidth, y: halfHeight, time: Date.now()});
 	const animationFrameRef = useRef();
 
 	useEffect(() => {
@@ -44,51 +44,35 @@ export default () => {
 	useEffect(() => {
 		const animateLocus = () => {
 			const currentTime = Date.now();
-			const deltaTime = currentTime - animationStartTimeRef.current;
-			const duration = 500; // 0.5secs
+			const delta = Math.min((currentTime - locus.time) / timeToSync, 1);
 
-			if (deltaTime < duration) {
-				// calculate the progress from 0 to 1
-				const progress = deltaTime / duration;
-
-				// calculate the current position based on the progress
-				setLocus({
-					x: locus.x + (targetRef.current.x - locus.x) * progress,
-					y: locus.y + (targetRef.current.y - locus.y) * progress,
-				});
-			} else {
-				setLocus({
-					x: targetRef.current.x,
-					y: targetRef.current.y,
-				});
-			}
+			// calculate the current position based on the progress
+			setLocus({
+				x: (locus.x * (1 - delta)) + targetRef.current.x * delta,
+				y: (locus.y * (1 - delta)) + targetRef.current.y * delta,
+				time: currentTime,
+			});
 
 			// continue animation
-			if (isMouseDown) animationFrameRef.current = requestAnimationFrame(animateLocus);
+			animationFrameRef.current = requestAnimationFrame(animateLocus);
 		};
 
-		if (isMouseDown) {
-			animationFrameRef.current = requestAnimationFrame(animateLocus);
-			animationStartTimeRef.current = Date.now();
-		}
-		else cancelAnimationFrame(animationFrameRef.current);
+		animationFrameRef.current = requestAnimationFrame(animateLocus);
 
 		return () => cancelAnimationFrame(animationFrameRef.current);
-	}, [isMouseDown]);
+	});
 
 	return <Stage
 		width={windowSize.width}
 		height={windowSize.height}
-		onMouseDown={e => {targetRef.current = {x: e.evt.clientX, y: e.evt.clientY}; setIsMouseDown(true);}}
-		onMouseUp={() => setIsMouseDown(false)}
-		onMouseMove={e => {if (isMouseDown) targetRef.current = {x: e.evt.clientX, y: e.evt.clientY};}}
+		onMouseMove={e => targetRef.current = {x: e.evt.clientX, y: e.evt.clientY, time: Date.now()}}
 	>
 		<Layer>
 			{/* horizontal axis */}
 			<Line points={[0, halfHeight, windowSize.width, halfHeight]} stroke="black" strokeWidth={0.3}/>
 
 			{/* vertical axes */}
-			{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line  stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x, 0, x, windowSize.height]}/>)(halfWidth + (offset * halfHeight)))}
+			{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line	stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x, 0, x, windowSize.height]}/>)(halfWidth + (offset * halfHeight)))}
 
 			<Circle x={locus.x} y={locus.y} radius={10} fill="red"/>
 		</Layer>
