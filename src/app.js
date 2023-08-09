@@ -3,7 +3,7 @@ import {Stage, Layer, Circle, Line} from "react-konva";
 
 const maxY = 1;
 
-const timeToSync = 500; //ms
+const timeToSync = 200; //ms
 export default () => {
 	const [windowSize, setWindowSize] = useState({
 		width: window.innerWidth,
@@ -52,20 +52,17 @@ export default () => {
 				y: (locus.y * (1 - delta)) + targetRef.current.y * delta,
 				time: currentTime,
 			});
-
-			// continue animation
-			animationFrameRef.current = requestAnimationFrame(animateLocus);
 		};
 
 		animationFrameRef.current = requestAnimationFrame(animateLocus);
 
 		return () => cancelAnimationFrame(animationFrameRef.current);
-	});
+	}); // run every time we set a new locus
 
 	return <Stage
 		width={windowSize.width}
 		height={windowSize.height}
-		onMouseMove={e => targetRef.current = {x: e.evt.clientX, y: e.evt.clientY, time: Date.now()}}
+		onMouseMove={e => targetRef.current = {x: e.evt.clientX, y: e.evt.clientY}}
 	>
 		<Layer>
 			{/* horizontal axis */}
