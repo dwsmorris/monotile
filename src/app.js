@@ -57,7 +57,7 @@ export default () => {
 		animationFrameRef.current = requestAnimationFrame(animateLocus);
 
 		return () => cancelAnimationFrame(animationFrameRef.current);
-	}); // run every time we set a new locus
+	}, [locus]); // run every time we set a new locus
 
 	return <Stage
 		width={windowSize.width}
