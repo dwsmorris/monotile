@@ -1,13 +1,21 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useReducer, useEffect, useRef} from 'react';
 import {Stage, Layer, Circle, Line} from "react-konva";
 
 const maxY = 1;
 
 const timeToSync = 200; //ms
 export default () => {
-	const [windowSize, setWindowSize] = useState({
-		width: window.innerWidth,
-		height: window.innerHeight,
+	const [{windowSize}, dispatch] = useReducer((state, action) => {
+		switch (action.type) {
+			case "WINDOW_SIZE": return {...state, windowSize: action.payload};
+		}
+
+		return state;
+	}, {
+		windowSize: {
+			width: window.innerWidth,
+			height: window.innerHeight,
+		},
 	});
 	const halfHeight = windowSize.height / 2;
 	const halfWidth = windowSize.width / 2;
@@ -25,10 +33,13 @@ export default () => {
 		const handleResize = () => {
 			// Use requestAnimationFrame to schedule the update
 			requestAnimationFrame(() => {
-				setWindowSize({
-					width: window.innerWidth,
-					height: window.innerHeight,
-				});
+				dispatch({
+					type: "WINDOW_SIZE",
+					payload: {
+						width: window.innerWidth,
+						height: window.innerHeight,
+					},
+				})
 			});
 		};
 
