@@ -1,17 +1,11 @@
 import React, {useState, useReducer, useEffect, useRef} from 'react';
 import {Stage, Layer, Circle, Line} from "react-konva";
 
-const maxY = 1;
-
 const timeToSync = 200; //ms
 export default () => {
-	const [{windowSize, maxCellLineX}, dispatch] = useReducer((state, action) => {
-		const windowSize = action.payload;
-		const maxX = windowSize.width / windowSize.height;
-		const maxCellLineX = Math.floor(maxX);
-
+	const [{windowSize}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
-			case "WINDOW_SIZE": return {...state, windowSize, maxCellLineX};
+			case "WINDOW_SIZE": return {...state, windowSize: action.payload};
 		}
 
 		return state;
@@ -20,8 +14,9 @@ export default () => {
 			width: window.innerWidth,
 			height: window.innerHeight,
 		},
-		maxCellLineX: Math.floor(window.innerWidth / window.innerHeight),
 	});
+	const maxX = windowSize.width / windowSize.height;
+	const maxCellLineX = Math.floor(maxX);
 	const halfHeight = windowSize.height / 2;
 	const halfWidth = windowSize.width / 2;
 	const [locus, setLocus] = useState({
