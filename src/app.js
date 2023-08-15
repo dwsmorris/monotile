@@ -5,9 +5,13 @@ const maxY = 1;
 
 const timeToSync = 200; //ms
 export default () => {
-	const [{windowSize}, dispatch] = useReducer((state, action) => {
+	const [{windowSize, maxCellLineX}, dispatch] = useReducer((state, action) => {
+		const windowSize = action.payload;
+		const maxX = windowSize.width / windowSize.height;
+		const maxCellLineX = Math.floor(maxX);
+
 		switch (action.type) {
-			case "WINDOW_SIZE": return {...state, windowSize: action.payload};
+			case "WINDOW_SIZE": return {...state, windowSize, maxCellLineX};
 		}
 
 		return state;
@@ -16,6 +20,7 @@ export default () => {
 			width: window.innerWidth,
 			height: window.innerHeight,
 		},
+		maxCellLineX: Math.floor(window.innerWidth / window.innerHeight),
 	});
 	const halfHeight = windowSize.height / 2;
 	const halfWidth = windowSize.width / 2;
@@ -24,8 +29,6 @@ export default () => {
 		y: halfHeight,
 		time: Date.now(),
 	});
-	const maxX = windowSize.width / windowSize.height;
-	const maxCellLineX = Math.floor(maxX);
 	const targetRef = useRef({x: halfWidth, y: halfHeight, time: Date.now()});
 	const animationFrameRef = useRef();
 
