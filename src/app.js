@@ -81,7 +81,7 @@ export default () => {
 			Y: window.innerHeight / 2,
 			time: Date.now(),
 		},
-		planeGroup: "p1",
+		planeGroup: "p2",
 	}));
 	const targetRef = useRef({X: windowSize.width / 2, Y: windowSize.height / 2, time: Date.now()});
 	const animationFrameRef = useRef();
