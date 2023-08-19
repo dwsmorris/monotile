@@ -1,5 +1,6 @@
 import React, {useReducer, useEffect, useRef} from 'react';
 import {Stage, Layer, Circle, Line} from "react-konva";
+import planeGroups from "./plane-groups.js";
 
 const timeToSync = 200; //ms
 
@@ -11,13 +12,19 @@ const multiplyMatrix = ([a1, b1, c1, d1, e1, f1, g1, h1, i1], [a2, b2, c2, d2, e
 	];
 };
 const transformVector = ([a, b, c, d, e, f, g, h, i]) => ([x, y, w = 1]) => [a*x + b*y + c*w, d*x + e*y + f*w];
+const rebaseCoordinate = coordinate => {
+	while (coordinate < 0) coordinate += 1;
+	while (coordinate > 1) coordinate -= 1;
+
+	return coordinate;
+};
 
 const getMetrics = windowSize => {
 	const maxX = windowSize.width / windowSize.height;
 	const maxCellLineX = Math.floor(maxX);
 	const halfWidth = windowSize.width / 2;
 	const halfHeight = windowSize.height / 2;
-	const getEquivalents = ({X, Y}) => {
+	const getEquivalents = ({locus: {X, Y}, planeGroup}) => {
 		const toCoordinates = multiplyMatrix([
 			1 / halfHeight, 0, 0,
 			0, 1 / halfHeight, 0,
@@ -36,28 +43,23 @@ const getMetrics = windowSize => {
 			0, halfHeight, 0,
 			0, 0, 1,
 		]);
-		const [x, y] = transformVector(toCoordinates)([X, Y]).map(coordinate => {
-			while (coordinate < 0) coordinate += 1;
-			while (coordinate > 1) coordinate -= 1;
-
-			return coordinate;
-		});
-		const symmetryEquivalents = [[x, y]]; // TODO: for other symmetry groups
-		const equivalents = Array.from({length: maxCellLineX * 2 + 2}, (_, index) => index - maxCellLineX - 1).flatMap(xOffset => [0, -1].flatMap(
+		const [x, y] = transformVector(toCoordinates)([X, Y]).map(rebaseCoordinate);
+		const symmetryEquivalents = planeGroups[planeGroup].equivalents.map(transform => transformVector(transform)([x, y]).map(rebaseCoordinate));
+		const translations = Array.from({length: maxCellLineX * 2 + 2}, (_, index) => index - maxCellLineX - 1).flatMap(xOffset => [0, -1].flatMap(
 			yOffset => symmetryEquivalents.map(([x, y]) => [x + xOffset, y + yOffset])
 		)).map(transformVector(fromCoordinates));
 
-		return equivalents;
+		return translations;
 	};
 
 	return {windowSize, maxCellLineX, getEquivalents};
 };
 const generateEquivalents = state => {
-	const {locus, getEquivalents} = state;
+	const {locus, getEquivalents, planeGroup} = state;
 
 	return {
 		...state,
-		equivalents: getEquivalents(locus),
+		equivalents: getEquivalents({locus, planeGroup}),
 	};
 };
 
@@ -79,6 +81,7 @@ export default () => {
 			Y: window.innerHeight / 2,
 			time: Date.now(),
 		},
+		planeGroup: "p1",
 	}));
 	const targetRef = useRef({X: windowSize.width / 2, Y: windowSize.height / 2, time: Date.now()});
 	const animationFrameRef = useRef();
