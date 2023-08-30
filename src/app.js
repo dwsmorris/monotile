@@ -24,25 +24,25 @@ const getMetrics = windowSize => {
 	const maxCellLineX = Math.floor(maxX);
 	const halfWidth = windowSize.width / 2;
 	const halfHeight = windowSize.height / 2;
+	const toCoordinates = multiplyMatrix([
+		1 / halfHeight, 0, 0,
+		0, 1 / halfHeight, 0,
+		0, 0, 1,
+	], [
+		1, 0, -halfWidth,
+		0, 1, -halfHeight,
+		0, 0, 1,
+	]);
+	const fromCoordinates = multiplyMatrix([
+		1, 0, halfWidth,
+		0, 1, halfHeight,
+		0, 0, 1,
+	], [
+		halfHeight, 0, 0,
+		0, halfHeight, 0,
+		0, 0, 1,
+	]);
 	const getEquivalents = ({locus: {X, Y}, planeGroup}) => {
-		const toCoordinates = multiplyMatrix([
-			1 / halfHeight, 0, 0,
-			0, 1 / halfHeight, 0,
-			0, 0, 1,
-		], [
-			1, 0, -halfWidth,
-			0, 1, -halfHeight,
-			0, 0, 1,
-		]);
-		const fromCoordinates = multiplyMatrix([
-			1, 0, halfWidth,
-			0, 1, halfHeight,
-			0, 0, 1,
-		], [
-			halfHeight, 0, 0,
-			0, halfHeight, 0,
-			0, 0, 1,
-		]);
 		const [x, y] = transformVector(toCoordinates)([X, Y]).map(rebaseCoordinate);
 		const symmetryEquivalents = planeGroups[planeGroup].equivalents.map(transform => transformVector(transform)([x, y]).map(rebaseCoordinate));
 		const translations = Array.from({length: maxCellLineX * 2 + 2}, (_, index) => index - maxCellLineX - 1).flatMap(xOffset => [0, -1].flatMap(
@@ -52,7 +52,7 @@ const getMetrics = windowSize => {
 		return translations;
 	};
 
-	return {windowSize, maxCellLineX, getEquivalents};
+	return {windowSize, maxCellLineX, getEquivalents, toCoordinates, fromCoordinates};
 };
 const generateEquivalents = state => {
 	const {locus, getEquivalents, planeGroup} = state;
@@ -64,10 +64,18 @@ const generateEquivalents = state => {
 };
 
 export default () => {
+	const targetRef = useRef({X: window.innerWidth / 2, Y: window.innerHeight / 2, time: Date.now()});
 	const [{windowSize, maxCellLineX, equivalents, locus}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics(action.payload)});
 			case "LOCUS": return generateEquivalents({...state, locus: action.payload});
+			case "TRANSITION": return (() => {
+				const {X, Y} = targetRef.current;
+				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
+				console.log([x, y]);
+
+				return state;
+			})();
 		}
 
 		return state;
@@ -82,9 +90,11 @@ export default () => {
 			time: Date.now(),
 		},
 		planeGroup: "p2",
+		nextPlaneGroup: (transitions => transitions[Math.floor(Math.random() * transitions.length)])(planeGroups.p2.transitions),
+		previousPlaneGroups: {},
 	}));
-	const targetRef = useRef({X: windowSize.width / 2, Y: windowSize.height / 2, time: Date.now()});
 	const animationFrameRef = useRef();
+	const targetPlaneGroupRef = useRef();
 
 	useEffect(() => {
 		const handleResize = () => {
@@ -103,9 +113,13 @@ export default () => {
 		// Attach the event listener
 		window.addEventListener('resize', handleResize);
 
+		// every period enact phase transition
+		const transitionInterval = setInterval(() => dispatch({type: "TRANSITION"}), 7000); // 7sec transition period
+
 		// Clean up the event listener when the component is unmounted
 		return () => {
 			window.removeEventListener('resize', handleResize);
+			clearInterval(transitionInterval);
 		};
 	}, []); // Empty dependency array to ensure this effect only runs once
 
