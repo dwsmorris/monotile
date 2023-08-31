@@ -65,6 +65,7 @@ const generateEquivalents = state => {
 
 export default () => {
 	const targetRef = useRef({X: window.innerWidth / 2, Y: window.innerHeight / 2, time: Date.now()});
+	const transitionRef = useRef();
 	const [{windowSize, maxCellLineX, equivalents, locus}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics(action.payload)});
@@ -72,7 +73,19 @@ export default () => {
 			case "TRANSITION": return (() => {
 				const {X, Y} = targetRef.current;
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
-				console.log([x, y]);
+				const cell = [Math.floor(x), Math.floor(y)];
+				console.log("cell", cell);
+				// generate transition points in this cell and those at +1 along each axis
+				const transitionPoints = state.nextPlaneGroup.positions.flatMap(([x, y]) => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => 
+					transformVector(state.fromCoordinates)([a + cell[0] + x, b + cell[1] + y]))).map(([x, y]) => {
+						const diffX = X - x;
+						const diffY = Y - y;
+
+						return [[x, y], (diffX * diffX) + (diffY * diffY)];
+					}).sort(([, a], [, b]) => a - b);
+				console.log(transitionPoints);
+				const closest = transitionPoints[0][0];
+				transitionRef.current = {X: closest[0], Y: closest[1]};
 
 				return state;
 			})();
@@ -94,7 +107,6 @@ export default () => {
 		previousPlaneGroups: {},
 	}));
 	const animationFrameRef = useRef();
-	const targetPlaneGroupRef = useRef();
 
 	useEffect(() => {
 		const handleResize = () => {
@@ -127,13 +139,14 @@ export default () => {
 		const animateLocus = () => {
 			const currentTime = Date.now();
 			const delta = Math.min((currentTime - locus.time) / timeToSync, 1);
+			const attractor = transitionRef.current || targetRef.current;
 
 			// calculate the current position based on the progress
 			dispatch({
 				type: "LOCUS",
 				payload: {
-					X: (locus.X * (1 - delta)) + targetRef.current.X * delta,
-					Y: (locus.Y * (1 - delta)) + targetRef.current.Y * delta,
+					X: (locus.X * (1 - delta)) + attractor.X * delta,
+					Y: (locus.Y * (1 - delta)) + attractor.Y * delta,
 					time: currentTime,
 				},
 			});
