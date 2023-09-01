@@ -62,6 +62,22 @@ const generateEquivalents = state => {
 		equivalents: getEquivalents({locus, planeGroup}),
 	};
 };
+const arePointsCoincident = ({X: X1, Y: Y1}, {X: X2, Y: Y2}) => (Math.round(X1) === Math.round(X2)) && (Math.round(Y1) === Math.round(Y2));
+const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
+	const transitions = planeGroups[currentPlaneGroup].transitions;
+	const sortedTransitions = transitions.map(x => [previousPlaneGroups[x.target] || 0, x]).sort(([a], [b]) => a - b);
+	const leastVisited = [];
+	let i = 0;
+
+	while (sortedTransitions[i][0] === sortedTransitions[0][0]) {
+		leastVisited.push(sortedTransitions[i][1]);
+		i += 1;
+
+		if (i === leastVisited.length) break;
+	}
+
+	return leastVisited[Math.floor(Math.random() * leastVisited.length)];
+};
 
 export default () => {
 	const targetRef = useRef({X: window.innerWidth / 2, Y: window.innerHeight / 2, time: Date.now()});
@@ -70,11 +86,10 @@ export default () => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics(action.payload)});
 			case "LOCUS": return generateEquivalents({...state, locus: action.payload});
-			case "TRANSITION": return (() => {
+			case "CALCULATE_TRANSITION": return (() => {
 				const {X, Y} = targetRef.current;
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
 				const cell = [Math.floor(x), Math.floor(y)];
-				console.log("cell", cell);
 				// generate transition points in this cell and those at +1 along each axis
 				const transitionPoints = state.nextPlaneGroup.positions.flatMap(([x, y]) => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => 
 					transformVector(state.fromCoordinates)([a + cell[0] + x, b + cell[1] + y]))).map(([x, y]) => {
@@ -83,11 +98,25 @@ export default () => {
 
 						return [[x, y], (diffX * diffX) + (diffY * diffY)];
 					}).sort(([, a], [, b]) => a - b);
-				console.log(transitionPoints);
 				const closest = transitionPoints[0][0];
 				transitionRef.current = {X: closest[0], Y: closest[1]};
 
 				return state;
+			})();
+			case "APPLY_TRANSITION": return (() => {
+				const currentPlaneGroup = state.nextPlaneGroup.target;
+				transitionRef.current = undefined;
+				const previousPlaneGroups = {
+					...state.previousPlaneGroups,
+					[currentPlaneGroup]: (state.previousPlaneGroups[currentPlaneGroup] || 0) + 1
+				};
+
+				return {
+					...state,
+					planeGroup: currentPlaneGroup,
+					previousPlaneGroups,
+					nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup, previousPlaneGroups}),
+				};
 			})();
 		}
 
@@ -102,8 +131,8 @@ export default () => {
 			Y: window.innerHeight / 2,
 			time: Date.now(),
 		},
-		planeGroup: "p2",
-		nextPlaneGroup: (transitions => transitions[Math.floor(Math.random() * transitions.length)])(planeGroups.p2.transitions),
+		planeGroup: "p1",
+		nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup: "p1", previousPlaneGroups: {}}),
 		previousPlaneGroups: {},
 	}));
 	const animationFrameRef = useRef();
@@ -126,7 +155,7 @@ export default () => {
 		window.addEventListener('resize', handleResize);
 
 		// every period enact phase transition
-		const transitionInterval = setInterval(() => dispatch({type: "TRANSITION"}), 7000); // 7sec transition period
+		const transitionInterval = setInterval(() => dispatch({type: "CALCULATE_TRANSITION"}), 7000); // 7sec transition period
 
 		// Clean up the event listener when the component is unmounted
 		return () => {
@@ -141,21 +170,26 @@ export default () => {
 			const delta = Math.min((currentTime - locus.time) / timeToSync, 1);
 			const attractor = transitionRef.current || targetRef.current;
 
-			// calculate the current position based on the progress
-			dispatch({
-				type: "LOCUS",
-				payload: {
-					X: (locus.X * (1 - delta)) + attractor.X * delta,
-					Y: (locus.Y * (1 - delta)) + attractor.Y * delta,
-					time: currentTime,
-				},
-			});
+			// if transitioning and we've reached the transition point, change plane group
+			if (transitionRef.current && arePointsCoincident(locus, transitionRef.current)) {
+				dispatch({type: "APPLY_TRANSITION"});
+			} else {
+				// calculate the current position based on the progress
+				dispatch({
+					type: "LOCUS",
+					payload: {
+						X: (locus.X * (1 - delta)) + attractor.X * delta,
+						Y: (locus.Y * (1 - delta)) + attractor.Y * delta,
+						time: currentTime,
+					},
+				});
+			}
 		};
 
 		animationFrameRef.current = requestAnimationFrame(animateLocus);
 
 		return () => cancelAnimationFrame(animationFrameRef.current);
-	}, [locus]); // run every time we set a new locus
+	}, [locus, transitionRef.current]); // run every time we set a new locus or apply transition
 
 	return <Stage
 		width={windowSize.width}
