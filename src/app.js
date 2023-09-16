@@ -18,6 +18,15 @@ const rebaseCoordinate = coordinate => {
 
 	return coordinate;
 };
+const getTheta = planeGroup => {
+	switch(planeGroup) {
+		case "p1":
+		case "p2":
+			return Math.random() * Math.PI / 4; // 0 to 45 degrees
+	}
+
+	return 0; // right angles (theta = gamma - pi/2)
+};
 
 const getMetrics = windowSize => {
 	const maxX = windowSize.width / windowSize.height;
@@ -25,8 +34,8 @@ const getMetrics = windowSize => {
 	const halfWidth = windowSize.width / 2;
 	const halfHeight = windowSize.height / 2;
 	const toCoordinates = multiplyMatrix([
-		1 / halfHeight, 0, 0,
 		0, 1 / halfHeight, 0,
+		1 / halfHeight, 0, 0,
 		0, 0, 1,
 	], [
 		1, 0, -halfWidth,
@@ -38,15 +47,15 @@ const getMetrics = windowSize => {
 		0, 1, halfHeight,
 		0, 0, 1,
 	], [
-		halfHeight, 0, 0,
 		0, halfHeight, 0,
+		halfHeight, 0, 0,
 		0, 0, 1,
 	]);
 	const getEquivalents = ({locus: {X, Y}, planeGroup}) => {
 		const [x, y] = transformVector(toCoordinates)([X, Y]).map(rebaseCoordinate);
 		const symmetryEquivalents = planeGroups[planeGroup].equivalents.map(transform => transformVector(transform)([x, y]).map(rebaseCoordinate));
-		const translations = Array.from({length: maxCellLineX * 2 + 2}, (_, index) => index - maxCellLineX - 1).flatMap(xOffset => [0, -1].flatMap(
-			yOffset => symmetryEquivalents.map(([x, y]) => [x + xOffset, y + yOffset])
+		const translations = Array.from({length: maxCellLineX * 2 + 2}, (_, index) => index - maxCellLineX - 1).flatMap(yOffset => [0, -1].flatMap(
+			xOffset => symmetryEquivalents.map(([x, y]) => [x + xOffset, y + yOffset])
 		)).map(transformVector(fromCoordinates));
 
 		return translations;
@@ -76,13 +85,27 @@ const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
 		if (i === leastVisited.length) break;
 	}
 
-	return leastVisited[Math.floor(Math.random() * leastVisited.length)];
+	const nextPlaneGroup = leastVisited[Math.floor(Math.random() * leastVisited.length)];
+
+	return {
+		...nextPlaneGroup,
+		theta: getTheta(nextPlaneGroup.target),
+	};
 };
 
 export default () => {
 	const targetRef = useRef({X: window.innerWidth / 2, Y: window.innerHeight / 2, time: Date.now()});
 	const transitionRef = useRef();
-	const [{windowSize, maxCellLineX, equivalents, locus}, dispatch] = useReducer((state, action) => {
+	const [{
+		windowSize, // {width: I, height: I}
+		maxCellLineX, // I
+		equivalents, // [[I, I]]
+		locus, // {X: I, Y: I, time: I}
+		planeGroup, // S
+		previousPlaneGroups, // {[planeGroup]: I}
+		nextPlaneGroup, // {target: S, positions: [[R, R]], theta: R}
+		theta, // R
+	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics(action.payload)});
 			case "LOCUS": return generateEquivalents({...state, locus: action.payload});
@@ -121,20 +144,27 @@ export default () => {
 		}
 
 		return state;
-	}, generateEquivalents({
-		...getMetrics({
-			width: window.innerWidth,
-			height: window.innerHeight,
-		}),
-		locus: {
-			X: window.innerWidth / 2,
-			Y: window.innerHeight / 2,
-			time: Date.now(),
-		},
-		planeGroup: "p1",
-		nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup: "p1", previousPlaneGroups: {}}),
-		previousPlaneGroups: {},
-	}));
+	}, (() => {
+		const startingPlaneGroup = "p1";
+		const startingTheta = getTheta(startingPlaneGroup);
+
+		return generateEquivalents({
+			...getMetrics({
+				width: window.innerWidth,
+				height: window.innerHeight,
+				theta: startingTheta,
+			}),
+			locus: {
+				X: window.innerWidth / 2,
+				Y: window.innerHeight / 2,
+				time: Date.now(),
+			},
+			planeGroup: "p1",
+			theta: startingTheta,
+			nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup: "p1", previousPlaneGroups: {}}),
+			previousPlaneGroups: {},
+		});
+	})());
 	const animationFrameRef = useRef();
 
 	useEffect(() => {
