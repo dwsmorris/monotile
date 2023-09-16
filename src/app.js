@@ -28,29 +28,40 @@ const getTheta = planeGroup => {
 	return 0; // right angles (theta = gamma - pi/2)
 };
 
-const getMetrics = windowSize => {
-	const maxX = windowSize.width / windowSize.height;
+const getMetrics = ({width, height, theta}) => {
+	const maxX = width / height;
 	const maxCellLineX = Math.floor(maxX);
-	const halfWidth = windowSize.width / 2;
-	const halfHeight = windowSize.height / 2;
-	const toCoordinates = multiplyMatrix([
-		0, 1 / halfHeight, 0,
+	const halfWidth = width / 2;
+	const halfHeight = height / 2;
+	const sinTheta = Math.sin(theta);
+	const cosTheta = Math.cos(theta);
+	const tanTheta = Math.tan(theta);
+	const toCoordinates = multiplyMatrix([ // convert to x and y coordinates (x now vertical, y horizontal)
+		0, cosTheta / halfHeight, 0,
 		1 / halfHeight, 0, 0,
 		0, 0, 1,
-	], [
+	], multiplyMatrix([ // convert to X' and Y' along coordinate axes
+		1, tanTheta, 0,
+		0, 1 / cosTheta, 0,
+		0, 0, 1,
+	], [ // absolute XY to centered XY
 		1, 0, -halfWidth,
 		0, 1, -halfHeight,
 		0, 0, 1,
-	]);
+	]));
 	const fromCoordinates = multiplyMatrix([
 		1, 0, halfWidth,
 		0, 1, halfHeight,
 		0, 0, 1,
-	], [
-		0, halfHeight, 0,
-		halfHeight, 0, 0,
+	], multiplyMatrix([ // [X', Y'] => [X, Y] orthogonal, origin centred
+		1, -sinTheta, 0,
+		0, cosTheta, 0,
 		0, 0, 1,
-	]);
+	], [ // (x, y) => [X', Y'] aligned with plane group axes
+		0, halfHeight, 0,
+		halfHeight / cosTheta, 0, 0,
+		0, 0, 1,
+	]));
 	const getEquivalents = ({locus: {X, Y}, planeGroup}) => {
 		const [x, y] = transformVector(toCoordinates)([X, Y]).map(rebaseCoordinate);
 		const symmetryEquivalents = planeGroups[planeGroup].equivalents.map(transform => transformVector(transform)([x, y]).map(rebaseCoordinate));
@@ -61,7 +72,7 @@ const getMetrics = windowSize => {
 		return translations;
 	};
 
-	return {windowSize, maxCellLineX, getEquivalents, toCoordinates, fromCoordinates};
+	return {windowSize: {width, height}, theta, maxCellLineX, getEquivalents, toCoordinates, fromCoordinates};
 };
 const generateEquivalents = state => {
 	const {locus, getEquivalents, planeGroup} = state;
@@ -107,7 +118,7 @@ export default () => {
 		theta, // R
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
-			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics(action.payload)});
+			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta})});
 			case "LOCUS": return generateEquivalents({...state, locus: action.payload});
 			case "CALCULATE_TRANSITION": return (() => {
 				const {X, Y} = targetRef.current;
