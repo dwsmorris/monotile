@@ -116,8 +116,8 @@ const applyAnimation = ({state, attractor, nextTheta}) => {
 		...(((nextTheta != undefined) && (state.theta !== nextTheta)) ? (() => {
 			const metrics = getMetrics({...state.windowSize, theta: (state.theta * (1 - delta)) + (nextTheta * delta)});
 			const {position, translation} = state.transitionPoint;
+			const [a, b] = translation;
 			const [x, y] = state.nextPlaneGroup.positions[position];
-			const [a, b] = [[0, 0], [1, 0], [0, 1], [1, 1]][translation];
 			const transitionPoint = transformVector(metrics.fromCoordinates)([x + a, y + b])
 
 			return {
@@ -151,8 +151,8 @@ export default () => {
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
 				const cell = [Math.floor(x), Math.floor(y)];
 				// generate transition points in this cell and those at +1 along each axis
-				const transitionPoints = state.nextPlaneGroup.positions.flatMap(([x, y], position) => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b], translation) => 
-					[transformVector(state.fromCoordinates)([a + cell[0] + x, b + cell[1] + y]), {position, translation}])).map(([[x, y], indices]) => {
+				const transitionPoints = state.nextPlaneGroup.positions.flatMap(([x, y], position) => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => 
+					[transformVector(state.fromCoordinates)([a + cell[0] + x, b + cell[1] + y]), {position, translation: [a + cell[0], b + cell[1]]}])).map(([[x, y], indices]) => {
 						const diffX = X - x;
 						const diffY = Y - y;
 
