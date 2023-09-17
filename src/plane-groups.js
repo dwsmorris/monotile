@@ -4,7 +4,7 @@ export default {
 			[1, 0, 0, 0, 1, 0, 0, 0, 1],
 		],
 		transitions: [{
-			target: "p2",
+			planeGroup: "p2",
 			positions: [[0, 0], [0, 0.5], [0.5, 0], [0.5, 0.5]],
 		}],
 	},
@@ -14,7 +14,7 @@ export default {
 			[-1, 0, 0, 0, -1, 0, 0, 0, 1],
 		],
 		transitions: [{
-			target: "p1",
+			planeGroup: "p1",
 			positions: [[0, 0], [0, 0.5], [0.5, 0], [0.5, 0.5]],
 		}],
 	},

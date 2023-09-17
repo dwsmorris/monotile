@@ -75,7 +75,7 @@ const getMetrics = ({width, height, theta}) => {
 	return {windowSize: {width, height}, theta, maxCellLineX, getEquivalents, toCoordinates, fromCoordinates};
 };
 const generateEquivalents = state => {
-	const {locus, getEquivalents, planeGroup} = state;
+	const {locus, getEquivalents, currentPlaneGroup: {planeGroup}} = state;
 
 	return {
 		...state,
@@ -83,9 +83,9 @@ const generateEquivalents = state => {
 	};
 };
 const arePointsCoincident = ({X: X1, Y: Y1}, {X: X2, Y: Y2}) => (Math.round(X1) === Math.round(X2)) && (Math.round(Y1) === Math.round(Y2));
-const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
-	const transitions = planeGroups[currentPlaneGroup].transitions;
-	const sortedTransitions = transitions.map(x => [previousPlaneGroups[x.target] || 0, x]).sort(([a], [b]) => a - b);
+const chooseNextPlaneGroup = ({planeGroup, previousPlaneGroups}) => {
+	const transitions = planeGroups[planeGroup].transitions;
+	const sortedTransitions = transitions.map(x => [previousPlaneGroups[x.planegroup] || 0, x]).sort(([a], [b]) => a - b);
 	const leastVisited = [];
 	let i = 0;
 
@@ -100,7 +100,7 @@ const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
 
 	return {
 		...nextPlaneGroup,
-		theta: getTheta(nextPlaneGroup.target),
+		theta: getTheta(nextPlaneGroup.planegroup),
 	};
 };
 
@@ -112,9 +112,9 @@ export default () => {
 		maxCellLineX, // I
 		equivalents, // [[I, I]]
 		locus, // {X: I, Y: I, time: I}
-		planeGroup, // S
+		currentPlaneGroup, // {planeGroup: S, theta: R}
 		previousPlaneGroups, // {[planeGroup]: I}
-		nextPlaneGroup, // {target: S, positions: [[R, R]], theta: R}
+		nextPlaneGroup, // {planeGroup: S, positions: [[R, R]], theta: R}
 		theta, // R
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
@@ -138,41 +138,40 @@ export default () => {
 				return state;
 			})();
 			case "APPLY_TRANSITION": return (() => {
-				const currentPlaneGroup = state.nextPlaneGroup.target;
 				transitionRef.current = undefined;
 				const previousPlaneGroups = {
 					...state.previousPlaneGroups,
-					[currentPlaneGroup]: (state.previousPlaneGroups[currentPlaneGroup] || 0) + 1
+					[state.currentPlaneGroup.planeGroup]: (state.previousPlaneGroups[state.currentPlaneGroup.planeGroup] || 0) + 1
 				};
+				const currentPlaneGroup = state.nextPlaneGroup;
 
 				return {
 					...state,
-					planeGroup: currentPlaneGroup,
+					currentPlaneGroup,
 					previousPlaneGroups,
-					nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup, previousPlaneGroups}),
+					nextPlaneGroup: chooseNextPlaneGroup({planeGroup: currentPlaneGroup.planeGroup, previousPlaneGroups}),
 				};
 			})();
 		}
 
 		return state;
 	}, (() => {
-		const startingPlaneGroup = "p1";
-		const startingTheta = getTheta(startingPlaneGroup);
+		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1")};
 
 		return generateEquivalents({
 			...getMetrics({
 				width: window.innerWidth,
 				height: window.innerHeight,
-				theta: startingTheta,
+				theta: currentPlaneGroup.theta,
 			}),
 			locus: {
 				X: window.innerWidth / 2,
 				Y: window.innerHeight / 2,
 				time: Date.now(),
 			},
-			planeGroup: "p1",
-			theta: startingTheta,
-			nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup: "p1", previousPlaneGroups: {}}),
+			currentPlaneGroup,
+			theta: currentPlaneGroup.theta,
+			nextPlaneGroup: chooseNextPlaneGroup({planeGroup: currentPlaneGroup.planeGroup, previousPlaneGroups: {}}),
 			previousPlaneGroups: {},
 		});
 	})());
