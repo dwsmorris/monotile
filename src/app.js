@@ -2,7 +2,7 @@ import React, {useReducer, useEffect, useRef} from 'react';
 import {Stage, Layer, Circle, Line} from "react-konva";
 import planeGroups from "./plane-groups.js";
 
-const timeToSync = 200; //ms
+const timeToSync = 100; //ms
 
 const multiplyMatrix = ([a1, b1, c1, d1, e1, f1, g1, h1, i1], [a2, b2, c2, d2, e2, f2, g2, h2, i2]) => {
 	return [
