@@ -113,7 +113,18 @@ const applyAnimation = ({state, attractor, nextTheta}) => {
 
 	return generateEquivalents({
 		...state,
-		...(((nextTheta != undefined) && (state.theta !== nextTheta)) ? getMetrics({...state.windowSize, theta: (state.theta * (1 - delta)) + (nextTheta * delta)}) : {}),
+		...(((nextTheta != undefined) && (state.theta !== nextTheta)) ? (() => {
+			const metrics = getMetrics({...state.windowSize, theta: (state.theta * (1 - delta)) + (nextTheta * delta)});
+			const {position, translation} = state.transitionPoint;
+			const [x, y] = state.nextPlaneGroup.positions[position];
+			const [a, b] = [[0, 0], [1, 0], [0, 1], [1, 1]][translation];
+			const transitionPoint = transformVector(metrics.fromCoordinates)([x + a, y + b])
+
+			return {
+				...metrics,
+				transitionPoint: {X: transitionPoint[0], Y: transitionPoint[1], position, translation},
+			};
+		})() : {}),
 		locus,
 		lastStepMs: ms,
 	});
@@ -140,16 +151,16 @@ export default () => {
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
 				const cell = [Math.floor(x), Math.floor(y)];
 				// generate transition points in this cell and those at +1 along each axis
-				const transitionPoints = state.nextPlaneGroup.positions.flatMap(([x, y]) => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => 
-					transformVector(state.fromCoordinates)([a + cell[0] + x, b + cell[1] + y]))).map(([x, y]) => {
+				const transitionPoints = state.nextPlaneGroup.positions.flatMap(([x, y], position) => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b], translation) => 
+					[transformVector(state.fromCoordinates)([a + cell[0] + x, b + cell[1] + y]), {position, translation}])).map(([[x, y], indices]) => {
 						const diffX = X - x;
 						const diffY = Y - y;
 
-						return [[x, y], (diffX * diffX) + (diffY * diffY)];
-					}).sort(([, a], [, b]) => a - b);
-				const closest = transitionPoints[0][0];
+						return [(diffX * diffX) + (diffY * diffY), indices, [x, y]];
+					}).sort(([a], [b]) => a - b);
+				const closest = transitionPoints[0][2];
 
-				return {...state, transitionPoint: {X: closest[0], Y: closest[1]}};
+				return {...state, transitionPoint: {X: closest[0], Y: closest[1], ...transitionPoints[0][1]}};
 			})();
 			case "ANIMATE": return (() => {
 				// if transitioning and we've reached the transition point, change plane group
