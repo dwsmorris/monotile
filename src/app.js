@@ -85,7 +85,7 @@ const generateEquivalents = state => {
 const arePointsCoincident = ({X: X1, Y: Y1}, {X: X2, Y: Y2}) => (Math.round(X1) === Math.round(X2)) && (Math.round(Y1) === Math.round(Y2));
 const chooseNextPlaneGroup = ({planeGroup, previousPlaneGroups}) => {
 	const transitions = planeGroups[planeGroup].transitions;
-	const sortedTransitions = transitions.map(x => [previousPlaneGroups[x.planegroup] || 0, x]).sort(([a], [b]) => a - b);
+	const sortedTransitions = transitions.map(x => [previousPlaneGroups[x.planeGroup] || 0, x]).sort(([a], [b]) => a - b);
 	const leastVisited = [];
 	let i = 0;
 
@@ -100,26 +100,41 @@ const chooseNextPlaneGroup = ({planeGroup, previousPlaneGroups}) => {
 
 	return {
 		...nextPlaneGroup,
-		theta: getTheta(nextPlaneGroup.planegroup),
+		theta: getTheta(nextPlaneGroup.planeGroup),
 	};
+};
+const applyAnimation = ({state, attractor, nextTheta}) => {
+	const ms = Date.now();
+	const delta = Math.min((ms - state.lastStepMs) / timeToSync, 1);
+	const locus = {
+		X: (state.locus.X * (1 - delta)) + (attractor.X * delta),
+		Y: (state.locus.Y * (1 - delta)) + (attractor.Y * delta),
+	};
+
+	return generateEquivalents({
+		...state,
+		...(((nextTheta != undefined) && (state.theta !== nextTheta)) ? getMetrics({...state.windowSize, theta: (state.theta * (1 - delta)) + (nextTheta * delta)}) : {}),
+		locus,
+		lastStepMs: ms,
+	});
 };
 
 export default () => {
-	const targetRef = useRef({X: window.innerWidth / 2, Y: window.innerHeight / 2, time: Date.now()});
-	const transitionRef = useRef();
+	const targetRef = useRef({X: window.innerWidth / 2, Y: window.innerHeight / 2});
 	const [{
 		windowSize, // {width: I, height: I}
 		maxCellLineX, // I
 		equivalents, // [[I, I]]
-		locus, // {X: I, Y: I, time: I}
+		locus, // {X: I, Y: I}
 		currentPlaneGroup, // {planeGroup: S, theta: R}
 		previousPlaneGroups, // {[planeGroup]: I}
 		nextPlaneGroup, // {planeGroup: S, positions: [[R, R]], theta: R}
 		theta, // R
+		transitionPoint, // {X: R, Y: R}?
+		lastStepMs, // I
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta})});
-			case "LOCUS": return generateEquivalents({...state, locus: action.payload});
 			case "CALCULATE_TRANSITION": return (() => {
 				const {X, Y} = targetRef.current;
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
@@ -133,24 +148,32 @@ export default () => {
 						return [[x, y], (diffX * diffX) + (diffY * diffY)];
 					}).sort(([, a], [, b]) => a - b);
 				const closest = transitionPoints[0][0];
-				transitionRef.current = {X: closest[0], Y: closest[1]};
 
-				return state;
+				return {...state, transitionPoint: {X: closest[0], Y: closest[1]}};
 			})();
-			case "APPLY_TRANSITION": return (() => {
-				transitionRef.current = undefined;
-				const previousPlaneGroups = {
-					...state.previousPlaneGroups,
-					[state.currentPlaneGroup.planeGroup]: (state.previousPlaneGroups[state.currentPlaneGroup.planeGroup] || 0) + 1
-				};
-				const currentPlaneGroup = state.nextPlaneGroup;
+			case "ANIMATE": return (() => {
+				// if transitioning and we've reached the transition point, change plane group
+				if (state.transitionPoint) {
+					if (arePointsCoincident(state.locus, state.transitionPoint)) {
+						const previousPlaneGroups = {
+							...state.previousPlaneGroups,
+							[state.currentPlaneGroup.planeGroup]: (state.previousPlaneGroups[state.currentPlaneGroup.planeGroup] || 0) + 1
+						};
 
-				return {
-					...state,
-					currentPlaneGroup,
-					previousPlaneGroups,
-					nextPlaneGroup: chooseNextPlaneGroup({planeGroup: currentPlaneGroup.planeGroup, previousPlaneGroups}),
-				};
+						return {
+							...state,
+							currentPlaneGroup: state.nextPlaneGroup,
+							previousPlaneGroups,
+							nextPlaneGroup: chooseNextPlaneGroup({planeGroup: state.nextPlaneGroup.planeGroup, previousPlaneGroups}),
+							transitionPoint: undefined,
+						};
+					}
+					else {
+						return applyAnimation({state, attractor: state.transitionPoint, nextTheta: state.nextPlaneGroup.theta});
+					}
+				} else {
+					return applyAnimation({state, attractor: targetRef.current});
+				}
 			})();
 		}
 
@@ -167,12 +190,13 @@ export default () => {
 			locus: {
 				X: window.innerWidth / 2,
 				Y: window.innerHeight / 2,
-				time: Date.now(),
 			},
 			currentPlaneGroup,
 			theta: currentPlaneGroup.theta,
 			nextPlaneGroup: chooseNextPlaneGroup({planeGroup: currentPlaneGroup.planeGroup, previousPlaneGroups: {}}),
 			previousPlaneGroups: {},
+			transitionPoint: undefined,
+			lastStepMs: Date.now(),
 		});
 	})());
 	const animationFrameRef = useRef();
@@ -205,31 +229,10 @@ export default () => {
 	}, []); // Empty dependency array to ensure this effect only runs once
 
 	useEffect(() => {
-		const animateLocus = () => {
-			const currentTime = Date.now();
-			const delta = Math.min((currentTime - locus.time) / timeToSync, 1);
-			const attractor = transitionRef.current || targetRef.current;
-
-			// if transitioning and we've reached the transition point, change plane group
-			if (transitionRef.current && arePointsCoincident(locus, transitionRef.current)) {
-				dispatch({type: "APPLY_TRANSITION"});
-			} else {
-				// calculate the current position based on the progress
-				dispatch({
-					type: "LOCUS",
-					payload: {
-						X: (locus.X * (1 - delta)) + attractor.X * delta,
-						Y: (locus.Y * (1 - delta)) + attractor.Y * delta,
-						time: currentTime,
-					},
-				});
-			}
-		};
-
-		animationFrameRef.current = requestAnimationFrame(animateLocus);
+		animationFrameRef.current = requestAnimationFrame(() => dispatch({type: "ANIMATE"}));
 
 		return () => cancelAnimationFrame(animationFrameRef.current);
-	}, [locus, transitionRef.current]); // run every time we set a new locus or apply transition
+	}, [locus, transitionPoint]); // run every time we set a new locus or apply transition
 
 	return <Stage
 		width={windowSize.width}
