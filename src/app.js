@@ -2,7 +2,7 @@ import React, {useReducer, useEffect, useRef} from 'react';
 import {Stage, Layer, Circle, Line} from "react-konva";
 import planeGroups from "./plane-groups.js";
 
-const timeToSync = 100; //ms
+const timeToSync = 200; //ms
 
 const multiplyMatrix = ([a1, b1, c1, d1, e1, f1, g1, h1, i1], [a2, b2, c2, d2, e2, f2, g2, h2, i2]) => {
 	return [
@@ -29,8 +29,6 @@ const getTheta = planeGroup => {
 };
 
 const getMetrics = ({width, height, theta}) => {
-	const maxX = width / height;
-	const maxCellLineX = Math.floor(maxX);
 	const halfWidth = width / 2;
 	const halfHeight = height / 2;
 	const sinTheta = Math.sin(theta);
@@ -62,6 +60,8 @@ const getMetrics = ({width, height, theta}) => {
 		halfHeight / cosTheta, 0, 0,
 		0, 0, 1,
 	]));
+	const topLeft = transformVector(toCoordinates)([0, 0]);
+	const maxCellLineX = -Math.floor(topLeft[1]) - 1;
 	const getEquivalents = ({locus: {X, Y}, planeGroup}) => {
 		const [x, y] = transformVector(toCoordinates)([X, Y]).map(rebaseCoordinate);
 		const symmetryEquivalents = planeGroups[planeGroup].equivalents.map(transform => transformVector(transform)([x, y]).map(rebaseCoordinate));
@@ -82,7 +82,7 @@ const generateEquivalents = state => {
 		equivalents: getEquivalents({locus, planeGroup}),
 	};
 };
-const arePointsCoincident = ({X: X1, Y: Y1}, {X: X2, Y: Y2}) => (Math.round(X1) === Math.round(X2)) && (Math.round(Y1) === Math.round(Y2));
+const arePointsCoincident = ({X: X1, Y: Y1}, {X: X2, Y: Y2}) => (Math.abs(X1 - X2) <= 1) && (Math.abs(Y1 - Y2) <= 1);
 const chooseNextPlaneGroup = ({planeGroup, previousPlaneGroups}) => {
 	const transitions = planeGroups[planeGroup].transitions;
 	const sortedTransitions = transitions.map(x => [previousPlaneGroups[x.planeGroup] || 0, x]).sort(([a], [b]) => a - b);
@@ -189,7 +189,7 @@ export default () => {
 		}
 
 		return state;
-	}, (() => {
+	}, undefined, () => {
 		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1")};
 
 		return generateEquivalents({
@@ -209,7 +209,7 @@ export default () => {
 			transitionPoint: undefined,
 			lastStepMs: Date.now(),
 		});
-	})());
+	});
 	const animationFrameRef = useRef();
 
 	useEffect(() => {
