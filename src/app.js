@@ -3,6 +3,7 @@ import {Stage, Layer, Circle, Line} from "react-konva";
 import planeGroups from "./plane-groups.js";
 
 const timeToSync = 200; //ms
+const transitionDuration = 500; // ms
 
 const multiplyMatrix = ([a1, b1, c1, d1, e1, f1, g1, h1, i1], [a2, b2, c2, d2, e2, f2, g2, h2, i2]) => {
 	return [
@@ -103,9 +104,8 @@ const chooseNextPlaneGroup = ({planeGroup, previousPlaneGroups}) => {
 		theta: getTheta(nextPlaneGroup.planeGroup),
 	};
 };
-const applyAnimation = ({state, attractor, nextTheta}) => {
-	const ms = Date.now();
-	const delta = Math.min((ms - state.lastStepMs) / timeToSync, 1);
+const applyAnimation = ({state, attractor, ms}) => {
+	const delta = Math.min((ms - state.lastLocusUpdate) / timeToSync, 1);
 	const locus = {
 		X: (state.locus.X * (1 - delta)) + (attractor.X * delta),
 		Y: (state.locus.Y * (1 - delta)) + (attractor.Y * delta),
@@ -113,20 +113,8 @@ const applyAnimation = ({state, attractor, nextTheta}) => {
 
 	return generateEquivalents({
 		...state,
-		...(((nextTheta != undefined) && (state.theta !== nextTheta)) ? (() => {
-			const metrics = getMetrics({...state.windowSize, theta: (state.theta * (1 - delta)) + (nextTheta * delta)});
-			const {position, translation} = state.transitionPoint;
-			const [a, b] = translation;
-			const [x, y] = state.nextPlaneGroup.positions[position];
-			const transitionPoint = transformVector(metrics.fromCoordinates)([x + a, y + b])
-
-			return {
-				...metrics,
-				transitionPoint: {X: transitionPoint[0], Y: transitionPoint[1], position, translation},
-			};
-		})() : {}),
 		locus,
-		lastStepMs: ms,
+		lastLocusUpdate: ms,
 	});
 };
 
@@ -138,16 +126,18 @@ export default () => {
 		equivalents, // [[I, I]]
 		locus, // {X: I, Y: I}
 		currentPlaneGroup, // {planeGroup: S, theta: R}
+		previousPlaneGroup, // {planeGroup: S, theta: R}?
 		previousPlaneGroups, // {[planeGroup]: I}
 		nextPlaneGroup, // {planeGroup: S, positions: [[R, R]], theta: R}
 		theta, // R
 		transitionPoint, // {X: R, Y: R}?
-		lastStepMs, // I
+		lastLocusUpdate, // I
+		transitionStart, // {ms: I, locus: {X: I, Y: I}}?
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta})});
 			case "CALCULATE_TRANSITION": return (() => {
-				const {X, Y} = targetRef.current;
+				const {X, Y} = state.locus;
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
 				const cell = [Math.floor(x), Math.floor(y)];
 				// generate transition points in this cell and those at +1 along each axis
@@ -160,30 +150,77 @@ export default () => {
 					}).sort(([a], [b]) => a - b);
 				const closest = transitionPoints[0][2];
 
-				return {...state, transitionPoint: {X: closest[0], Y: closest[1], ...transitionPoints[0][1]}};
+				return {...state, transitionPoint: {X: closest[0], Y: closest[1], ...transitionPoints[0][1]}, transitionStart: {ms: Date.now(), locus: state.locus}};
 			})();
 			case "ANIMATE": return (() => {
-				// if transitioning and we've reached the transition point, change plane group
-				if (state.transitionPoint) {
-					if (arePointsCoincident(state.locus, state.transitionPoint)) {
-						const previousPlaneGroups = {
-							...state.previousPlaneGroups,
-							[state.currentPlaneGroup.planeGroup]: (state.previousPlaneGroups[state.currentPlaneGroup.planeGroup] || 0) + 1
-						};
+				const ms = Date.now();
 
-						return {
-							...state,
-							currentPlaneGroup: state.nextPlaneGroup,
-							previousPlaneGroups,
-							nextPlaneGroup: chooseNextPlaneGroup({planeGroup: state.nextPlaneGroup.planeGroup, previousPlaneGroups}),
-							transitionPoint: undefined,
-						};
-					}
-					else {
-						return applyAnimation({state, attractor: state.transitionPoint, nextTheta: state.nextPlaneGroup.theta});
+				// if transitioning and we've reached the transition point, change plane group
+				if (state.transitionStart) {
+					const offset = ms - state.transitionStart.ms;
+
+					if (offset < transitionDuration) { // during transition
+						const halfDuration = transitionDuration / 2;
+
+						if (offset < halfDuration) { // during attraction to transition pointer
+							const delta = offset / halfDuration;
+							const locus = {
+								X: (state.transitionStart.locus.X * (1 - delta)) + (state.transitionPoint.X * delta),
+								Y: (state.transitionStart.locus.Y * (1 - delta)) + (state.transitionPoint.Y * delta),
+							};
+
+							return generateEquivalents({
+								...state,
+								locus,
+								lastLocusUpdate: ms,
+							});
+						} else { // during restoration to original point
+							const delta = (offset - halfDuration) / halfDuration;
+							const updatedState = (() => {
+								if (!state.previousPlaneGroup) {
+									const previousPlaneGroups = {
+										...state.previousPlaneGroups,
+										[state.currentPlaneGroup.planeGroup]: (state.previousPlaneGroups[state.currentPlaneGroup.planeGroup] || 0) + 1
+									};
+
+									return {
+										...state,
+										previousPlaneGroup: state.currentPlaneGroup,
+										currentPlaneGroup: state.nextPlaneGroup,
+										nextPlaneGroup: chooseNextPlaneGroup({planeGroup: state.nextPlaneGroup.planeGroup, previousPlaneGroups}),
+										previousPlaneGroups,
+									};
+								}
+
+								return state;
+							})();
+							const theta = (updatedState.previousPlaneGroup.theta * (1 - delta)) + (updatedState.currentPlaneGroup.theta * delta);
+							const locus = {
+								X: (state.transitionPoint.X * (1 - delta)) + (state.transitionStart.locus.X * delta),
+								Y: (state.transitionPoint.Y * (1 - delta)) + (state.transitionStart.locus.Y * delta),
+							};
+
+							return generateEquivalents({
+								...updatedState,
+								...((updatedState.previousPlaneGroup.theta !== updatedState.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta}) : {}),
+								locus,
+								lastLocusUpdate: ms,
+							});
+						}
+					} else { // just attract to mouse pointer as normal now
+						return applyAnimation({
+							state: {
+								...state,
+								...((state.previousPlaneGroup?.theta !== state.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta: state.currentPlaneGroup.theta}) : {}),
+								transitionStart: undefined,
+								previousPlaneGroup: undefined,
+							},
+							attractor: targetRef.current,
+							ms,
+						});
 					}
 				} else {
-					return applyAnimation({state, attractor: targetRef.current});
+					return applyAnimation({state, attractor: targetRef.current, ms});
 				}
 			})();
 		}
@@ -207,7 +244,9 @@ export default () => {
 			nextPlaneGroup: chooseNextPlaneGroup({planeGroup: currentPlaneGroup.planeGroup, previousPlaneGroups: {}}),
 			previousPlaneGroups: {},
 			transitionPoint: undefined,
-			lastStepMs: Date.now(),
+			lastLocusUpdate: Date.now(),
+			transitionStartTime: undefined,
+			previousPlaneGroup: undefined,
 		});
 	});
 	const animationFrameRef = useRef();
