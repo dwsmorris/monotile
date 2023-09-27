@@ -5,7 +5,7 @@ export default {
 		],
 		transitions: [{
 			planeGroup: "p2",
-			mappings: [[0], [0, 1]],
+			mappings: [0, 0],
 			positions: [[0, 0], [0, 0.5], [0.5, 0], [0.5, 0.5]],
 		}],
 	},
@@ -16,7 +16,7 @@ export default {
 		],
 		transitions: [{
 			planeGroup: "p1",
-			mappings: [[0, 1], [0]],
+			mappings: [[0, 1]],
 			positions: [[0, 0], [0, 0.5], [0.5, 0], [0.5, 0.5]],
 		}],
 	},

@@ -228,7 +228,7 @@ export default () => {
 
 		return state;
 	}, undefined, () => {
-		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), lchs: [[0, 0, 0]]};
+		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), lchs: [[null, null, null]]};
 
 		return generateEquivalents({
 			...getMetrics({
