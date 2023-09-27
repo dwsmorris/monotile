@@ -84,8 +84,8 @@ const generateEquivalents = state => {
 		equivalents: getEquivalents({locus, planeGroup}),
 	};
 };
-const chooseNextPlaneGroup = ({planeGroup, previousPlaneGroups}) => {
-	const transitions = planeGroups[planeGroup].transitions;
+const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
+	const transitions = planeGroups[currentPlaneGroup.planeGroup].transitions;
 	const sortedTransitions = transitions.map(x => [previousPlaneGroups[x.planeGroup] || 0, x]).sort(([a], [b]) => a - b);
 	const leastVisited = [];
 	let i = 0;
@@ -182,12 +182,13 @@ export default () => {
 										...state.previousPlaneGroups,
 										[state.currentPlaneGroup.planeGroup]: (state.previousPlaneGroups[state.currentPlaneGroup.planeGroup] || 0) + 1
 									};
+									const currentPlaneGroup = state.nextPlaneGroup;
 
 									return {
 										...state,
 										previousPlaneGroup: state.currentPlaneGroup,
-										currentPlaneGroup: state.nextPlaneGroup,
-										nextPlaneGroup: chooseNextPlaneGroup({planeGroup: state.nextPlaneGroup.planeGroup, previousPlaneGroups}),
+										currentPlaneGroup,
+										nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup, previousPlaneGroups}),
 										previousPlaneGroups,
 									};
 								}
@@ -227,7 +228,7 @@ export default () => {
 
 		return state;
 	}, undefined, () => {
-		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1")};
+		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), lchs: [[0, 0, 0]]};
 
 		return generateEquivalents({
 			...getMetrics({
@@ -241,7 +242,7 @@ export default () => {
 			},
 			currentPlaneGroup,
 			theta: currentPlaneGroup.theta,
-			nextPlaneGroup: chooseNextPlaneGroup({planeGroup: currentPlaneGroup.planeGroup, previousPlaneGroups: {}}),
+			nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup, previousPlaneGroups: {}}),
 			previousPlaneGroups: {},
 			transitionPoint: undefined,
 			lastLocusUpdate: Date.now(),
