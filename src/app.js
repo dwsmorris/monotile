@@ -1,6 +1,7 @@
 import React, {useReducer, useEffect, useRef} from 'react';
 import {Stage, Layer, Circle, Line} from "react-konva";
 import planeGroups from "./plane-groups.js";
+import getColor from "./get-color.js";
 
 const timeToSync = 200; //ms
 const transitionDuration = 500; // ms
@@ -83,7 +84,6 @@ const generateEquivalents = state => {
 		equivalents: getEquivalents({locus, planeGroup}),
 	};
 };
-const arePointsCoincident = ({X: X1, Y: Y1}, {X: X2, Y: Y2}) => (Math.abs(X1 - X2) <= 1) && (Math.abs(Y1 - Y2) <= 1);
 const chooseNextPlaneGroup = ({planeGroup, previousPlaneGroups}) => {
 	const transitions = planeGroups[planeGroup].transitions;
 	const sortedTransitions = transitions.map(x => [previousPlaneGroups[x.planeGroup] || 0, x]).sort(([a], [b]) => a - b);
@@ -285,6 +285,7 @@ export default () => {
 	}, [locus, transitionPoint]); // run every time we set a new locus or apply transition
 
 	const deltaX = windowSize.height / 2 * Math.tan(theta);
+	const color = getColor();
 
 	return <Stage
 		width={windowSize.width}
@@ -299,7 +300,7 @@ export default () => {
 			{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + deltaX, 0, x - deltaX, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / 2)))}
 
 			{/* symmetry equivalent points of locus */}
-			{equivalents.map(([X, Y], index) => <Circle key={index} x={X} y={Y} radius={10} fill="red"/>)}
+			{equivalents.map(([X, Y], index) => <Circle key={index} x={X} y={Y} radius={10} fill={color}/>)}
 		</Layer>
 	</Stage>
 };
