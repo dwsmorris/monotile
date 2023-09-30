@@ -84,7 +84,7 @@ const generateEquivalents = state => {
 		equivalents: getEquivalents({locus, planeGroup}),
 	};
 };
-const getDivergingLchs = ({number, lch}) => {
+const getDivergingLchs = ({number, lch, proportion}) => {
 	const unsetProperties = [
 		...((lch.l == null) ? ["l"] : []),
 		...((lch.c == null) ? ["c"] : []),
@@ -95,20 +95,48 @@ const getDivergingLchs = ({number, lch}) => {
 	return Array.from({length: number}).map((_, i) => ({
 		...lch,
 		[property]: (() => {
-			if (!i) return -1;
-			if (i === 2) return 1;
+			if (!i) return -proportion;
+			if (i === 2) return proportion;
 
-			return (number === 2) ? 1 : 0;
+			return (number === 2) ? proportion : 0;
 		})(),
 	}));
 };
-const getConvergingLch = lchs => {
+const getConvergingLch = ({lchs, proportion}) => {
 	const convergingProperty = (lchs[0].l !== lchs[1].l) ? "l" : (lchs[0].c !== lchs[1].c) ? "c" : "h";
 
 	return {
 		...lchs[0],
-		[convergingProperty]: undefined,
+		[convergingProperty]: (1 - proportion) * lchs[convergingProperty],
 	};
+};
+const getLchs = ({currentPlaneGroup, nextPlaneGroup, proportion}) => {
+	const mappings = nextPlaneGroup.mappings;
+	const result = Array.from({length: mappings.length}); //! MUTATION
+
+	for (var j = 0; j < mappings.length; j++) {
+		const reference = mappings[j];
+
+		if (result[j]) continue; // already been calculated
+		if (Array.isArray(reference)) { // collapsing
+			result[j] = getConvergingLch({lchs: reference.map(index => currentPlaneGroup.lchs[index]), proportion});
+		} else {
+			// find all the diverging equivalents of this position
+			const divergingIndices = mappings.map((index, i) => [index, i]).filter(([index]) => reference === index).map(([, i]) => i);
+
+			if (divergingIndices.length === 1) { // no new sections are generated - maintain lch
+				result[divergingIndices[0]] = currentPlaneGroup.lchs[reference];
+			} else { // diverging
+				const divergingLchs = getDivergingLchs({number: divergingIndices.length, lch: currentPlaneGroup.lchs[reference], proportion});
+
+				for (var k = 0; k < divergingIndices.length; k += 1) {
+					result[divergingIndices[k]] = divergingLchs[k];
+				}
+			}
+		}
+	}
+
+	return result;
 };
 const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
 	const transitions = planeGroups[currentPlaneGroup.planeGroup].transitions;
@@ -124,34 +152,7 @@ const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
 	}
 
 	const nextPlaneGroup = leastVisited[Math.floor(Math.random() * leastVisited.length)];
-	const lchs = (() => { // calculate colours
-		const mappings = nextPlaneGroup.mappings;
-		const result = Array.from({length: mappings.length}); //! MUTATION
-
-		for (var j = 0; j < mappings.length; j++) {
-			const reference = mappings[j];
-
-			if (result[j]) continue; // already been calculated
-			if (Array.isArray(reference)) { // collapsing
-				result[j] = getConvergingLch(reference.map(index => currentPlaneGroup.lchs[index]));
-			} else {
-				// find all the diverging equivalents of this position
-				const divergingIndices = mappings.map((index, i) => [index, i]).filter(([index]) => reference === index).map(([, i]) => i);
-
-				if (divergingIndices.length === 1) { // no new sections are generated - maintain lch
-					result[divergingIndices[0]] = currentPlaneGroup.lchs[reference];
-				} else { // diverging
-					const divergingLchs = getDivergingLchs({number: divergingIndices.length, lch: currentPlaneGroup.lchs[reference]});
-
-					for (var k = 0; k < divergingIndices.length; k += 1) {
-						result[divergingIndices[k]] = divergingLchs[k];
-					}
-				}
-			}
-		}
-
-		return result;
-	})();
+	const lchs = getLchs({currentPlaneGroup, nextPlaneGroup, proportion: 1});
 
 	return {
 		...nextPlaneGroup,
@@ -188,6 +189,7 @@ export default () => {
 		transitionPoint, // {X: R, Y: R}?
 		lastLocusUpdate, // I
 		transitionStart, // {ms: I, locus: {X: I, Y: I}}?
+		lchs, // [{l: -1|0|1, c: -1|0|1, h: -1|0|1}]
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta})});
@@ -228,6 +230,7 @@ export default () => {
 								...state,
 								locus,
 								lastLocusUpdate: ms,
+								lchs: Array.isArray(state.nextPlaneGroup.mappings[0]) ? getLchs({currentPlaneGroup: state.currentPlaneGroup, nextPlaneGroup: state.nextPlaneGroup, proportion: delta}) : state.lchs, // if converging lchs, we apply this during attraction to transition pointer
 							});
 						} else { // during restoration to original point
 							const delta = (offset - halfDuration) / halfDuration;
@@ -261,6 +264,7 @@ export default () => {
 								...((updatedState.previousPlaneGroup.theta !== updatedState.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta}) : {}),
 								locus,
 								lastLocusUpdate: ms,
+								lchs: Array.isArray(state.nextPlaneGroup.mappings[0]) ? state.lchs : getLchs({currentPlaneGroup: state.currentPlaneGroup, nextPlaneGroup: state.nextPlaneGroup, proportion: delta}), // if diverging lchs, we apply this during restoration back to transition start point
 							});
 						}
 					} else { // just attract to mouse pointer as normal now
@@ -303,6 +307,7 @@ export default () => {
 			lastLocusUpdate: Date.now(),
 			transitionStartTime: undefined,
 			previousPlaneGroup: undefined,
+			lchs: [{}],
 		});
 	});
 	const animationFrameRef = useRef();
@@ -341,8 +346,7 @@ export default () => {
 	}, [locus, transitionPoint]); // run every time we set a new locus or apply transition
 
 	const deltaX = windowSize.height / 2 * Math.tan(theta);
-	const lchs = currentPlaneGroup.lchs;
-	console.log(lchs);
+	console.log(lchs.map(getColor));
 
 	return <Stage
 		width={windowSize.width}
