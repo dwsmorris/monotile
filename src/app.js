@@ -84,6 +84,32 @@ const generateEquivalents = state => {
 		equivalents: getEquivalents({locus, planeGroup}),
 	};
 };
+const getDivergingLchs = ({number, lch}) => {
+	const unsetProperties = [
+		...((lch.l == null) ? ["l"] : []),
+		...((lch.c == null) ? ["c"] : []),
+		...((lch.h == null) ? ["h"] : []),
+	];
+	const property = unsetProperties[Math.floor(Math.random() * unsetProperties.length)];
+
+	return Array.from({length: number}).map((_, i) => ({
+		...lch,
+		[property]: (() => {
+			if (!i) return -1;
+			if (i === 2) return 1;
+
+			return (number === 2) ? 1 : 0;
+		})(),
+	}));
+};
+const getConvergingLch = lchs => {
+	const convergingProperty = (lchs[0].l !== lchs[1].l) ? "l" : (lchs[0].c !== lchs[1].c) ? "c" : "h";
+
+	return {
+		...lchs[0],
+		[convergingProperty]: undefined,
+	};
+};
 const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
 	const transitions = planeGroups[currentPlaneGroup.planeGroup].transitions;
 	const sortedTransitions = transitions.map(x => [previousPlaneGroups[x.planeGroup] || 0, x]).sort(([a], [b]) => a - b);
@@ -98,9 +124,38 @@ const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
 	}
 
 	const nextPlaneGroup = leastVisited[Math.floor(Math.random() * leastVisited.length)];
+	const lchs = (() => { // calculate colours
+		const mappings = nextPlaneGroup.mappings;
+		const result = Array.from({length: mappings.length}); //! MUTATION
+
+		for (var j = 0; j < mappings.length; j++) {
+			const reference = mappings[j];
+
+			if (result[j]) continue; // already been calculated
+			if (Array.isArray(reference)) { // collapsing
+				result[j] = getConvergingLch(reference.map(index => currentPlaneGroup.lchs[index]));
+			} else {
+				// find all the diverging equivalents of this position
+				const divergingIndices = mappings.map((index, i) => [index, i]).filter(([index]) => reference === index).map(([, i]) => i);
+
+				if (divergingIndices.length === 1) { // no new sections are generated - maintain lch
+					result[divergingIndices[0]] = currentPlaneGroup.lchs[reference];
+				} else { // diverging
+					const divergingLchs = getDivergingLchs({number: divergingIndices.length, lch: currentPlaneGroup.lchs[reference]});
+
+					for (var k = 0; k < divergingIndices.length; k += 1) {
+						result[divergingIndices[k]] = divergingLchs[k];
+					}
+				}
+			}
+		}
+
+		return result;
+	})();
 
 	return {
 		...nextPlaneGroup,
+		lchs,
 		theta: getTheta(nextPlaneGroup.planeGroup),
 	};
 };
@@ -228,7 +283,7 @@ export default () => {
 
 		return state;
 	}, undefined, () => {
-		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), lchs: [[null, null, null]]};
+		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), lchs: [{}]};
 
 		return generateEquivalents({
 			...getMetrics({
@@ -286,7 +341,8 @@ export default () => {
 	}, [locus, transitionPoint]); // run every time we set a new locus or apply transition
 
 	const deltaX = windowSize.height / 2 * Math.tan(theta);
-	const color = getColor();
+	const lchs = currentPlaneGroup.lchs;
+	console.log(lchs);
 
 	return <Stage
 		width={windowSize.width}
@@ -301,7 +357,7 @@ export default () => {
 			{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + deltaX, 0, x - deltaX, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / 2)))}
 
 			{/* symmetry equivalent points of locus */}
-			{equivalents.map(([X, Y], index) => <Circle key={index} x={X} y={Y} radius={10} fill={color}/>)}
+			{equivalents.map(([X, Y], index) => <Circle key={index} x={X} y={Y} radius={10} fill={getColor(lchs[index])}/>)}
 		</Layer>
 	</Stage>
 };
