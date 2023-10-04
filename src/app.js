@@ -304,7 +304,7 @@ export default () => {
 
 		return state;
 	}, undefined, () => {
-		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), lchs: [{}]};
+		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), lchs: [{}], mappings: [0]}; // dummy mappings to check cell arity
 
 		return generateEquivalents({
 			...getMetrics({
@@ -363,7 +363,7 @@ export default () => {
 	}, [locus, transitionPoint]); // run every time we set a new locus or apply transition
 
 	const deltaX = windowSize.height / 2 * Math.tan(theta);
-	console.log(JSON.stringify(lchs.map(getColor)));
+	const cellArity = currentPlaneGroup.mappings.length;
 
 	return <Stage
 		width={windowSize.width}
@@ -378,7 +378,7 @@ export default () => {
 			{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + deltaX, 0, x - deltaX, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / 2)))}
 
 			{/* symmetry equivalent points of locus */}
-			{equivalents.map(([X, Y], index) => <Circle key={index} x={X} y={Y} radius={10} fill={getColor(lchs[index])}/>)}
+			{equivalents.map(([X, Y], index) => <Circle key={index} x={X} y={Y} radius={10} fill={getColor(lchs[index % cellArity])}/>)}
 		</Layer>
 	</Stage>
 };

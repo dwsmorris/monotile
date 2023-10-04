@@ -1,11 +1,11 @@
 
-const colorCycleMs = /*60000*/1000000000;
+const colorCycleMs = 60000;
 const luminance = [56, 72];
 const chroma = [23, 43]
 const hue = [-30, 30];
 
 const getValue = ({range, index}) => {
-	const proportion = (index + 1 / 2);
+	const proportion = (index + 1) / 2;
 
 	return (proportion * range[1]) + ((1 - proportion) * range[0]);
 };
