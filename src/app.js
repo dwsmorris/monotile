@@ -84,14 +84,7 @@ const generateEquivalents = state => {
 		equivalents: getEquivalents({locus, planeGroup}),
 	};
 };
-const getDivergingLchs = ({number, lch, proportion}) => {
-	const unsetProperties = [
-		...((lch.l == null) ? ["l"] : []),
-		...((lch.c == null) ? ["c"] : []),
-		...((lch.h == null) ? ["h"] : []),
-	];
-	const property = unsetProperties[Math.floor(Math.random() * unsetProperties.length)];
-
+const getDivergingLchs = ({number, lch, proportion, property}) => {
 	return Array.from({length: number}).map((_, i) => ({
 		...lch,
 		[property]: (() => {
@@ -102,41 +95,61 @@ const getDivergingLchs = ({number, lch, proportion}) => {
 		})(),
 	}));
 };
-const getConvergingLch = ({lchs, proportion}) => {
-	const convergingProperty = (lchs[0].l !== lchs[1].l) ? "l" : (lchs[0].c !== lchs[1].c) ? "c" : "h";
-
+const getConvergingLch = ({lchs, property}) => {
 	return {
 		...lchs[0],
-		[convergingProperty]: (1 - proportion) * lchs[convergingProperty],
+		[property]: undefined,
 	};
 };
-const getLchs = ({currentPlaneGroup, nextPlaneGroup, proportion}) => {
-	const mappings = nextPlaneGroup.mappings;
-	const result = Array.from({length: mappings.length}); //! MUTATION
+const getLchs = ({planeGroup1, planeGroup2, proportion}) => {
+	const isConverging = Array.isArray(planeGroup2.mappings[0]);
 
-	for (var j = 0; j < mappings.length; j++) {
-		const reference = mappings[j];
+	if (isConverging) {
+		if (proportion === 1) return planeGroup2.mappings.map(reference => getConvergingLch({lchs: reference.map(index => planeGroup1.lchs[index]), property: planeGroup2.property}));
 
-		if (result[j]) continue; // already been calculated
-		if (Array.isArray(reference)) { // collapsing
-			result[j] = getConvergingLch({lchs: reference.map(index => currentPlaneGroup.lchs[index]), proportion});
-		} else {
+		return planeGroup1.lchs.map(lch => ({
+			...lch,
+			[planeGroup2.property]: lch[planeGroup2.property] * (1 - proportion),
+		}));
+	} else {
+		const mappings = planeGroup2.mappings;
+		const result = Array.from({length: mappings.length}); //! MUTATION
+
+		for (var j = 0; j < mappings.length; j++) {
+			const reference = mappings[j];
+
+			if (result[j]) continue; // already been calculated
+
 			// find all the diverging equivalents of this position
 			const divergingIndices = mappings.map((index, i) => [index, i]).filter(([index]) => reference === index).map(([, i]) => i);
 
 			if (divergingIndices.length === 1) { // no new sections are generated - maintain lch
-				result[divergingIndices[0]] = currentPlaneGroup.lchs[reference];
+				result[divergingIndices[0]] = planeGroup1.lchs[reference];
 			} else { // diverging
-				const divergingLchs = getDivergingLchs({number: divergingIndices.length, lch: currentPlaneGroup.lchs[reference], proportion});
+				const lchs = getDivergingLchs({number: divergingIndices.length, lch: planeGroup1.lchs[reference], proportion, property: planeGroup2.property});
 
 				for (var k = 0; k < divergingIndices.length; k += 1) {
-					result[divergingIndices[k]] = divergingLchs[k];
+					result[divergingIndices[k]] = lchs[k];
 				}
 			}
 		}
-	}
 
-	return result;
+		return result;
+	}
+};
+const getProperty = ({currentPlaneGroup, nextPlaneGroup}) => {
+	if (Array.isArray(nextPlaneGroup.mappings[0])) { // converging
+		return currentPlaneGroup.property;
+	} else { // diverging - select an absent property
+		const lch = currentPlaneGroup.lchs[0];
+		const options = [
+			...((lch.l == null) ? ["l"] : []),
+			...((lch.c == null) ? ["c"] : []),
+			...((lch.h == null) ? ["h"] : []),
+		];
+
+		return options[Math.floor(Math.random() * options.length)];
+	}
 };
 const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
 	const transitions = planeGroups[currentPlaneGroup.planeGroup].transitions;
@@ -152,7 +165,8 @@ const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
 	}
 
 	const nextPlaneGroup = leastVisited[Math.floor(Math.random() * leastVisited.length)];
-	const lchs = getLchs({currentPlaneGroup, nextPlaneGroup, proportion: 1});
+	nextPlaneGroup.property = getProperty({currentPlaneGroup, nextPlaneGroup});
+	const lchs = getLchs({planeGroup1: currentPlaneGroup, planeGroup2: nextPlaneGroup, proportion: 1});
 
 	return {
 		...nextPlaneGroup,
@@ -173,6 +187,7 @@ const applyAnimation = ({state, attractor, ms}) => {
 		lastLocusUpdate: ms,
 	});
 };
+const isConvergingTransition = ({previousPlaneGroup, currentPlaneGroup, nextPlaneGroup}) => Array.isArray(previousPlaneGroup ? currentPlaneGroup.mappings[0] : nextPlaneGroup.mappings[0]);
 
 export default () => {
 	const targetRef = useRef({X: window.innerWidth / 2, Y: window.innerHeight / 2});
@@ -212,7 +227,6 @@ export default () => {
 			case "ANIMATE": return (() => {
 				const ms = Date.now();
 
-				// if transitioning and we've reached the transition point, change plane group
 				if (state.transitionStart) {
 					const offset = ms - state.transitionStart.ms;
 
@@ -230,11 +244,12 @@ export default () => {
 								...state,
 								locus,
 								lastLocusUpdate: ms,
-								lchs: Array.isArray(state.nextPlaneGroup.mappings[0]) ? getLchs({currentPlaneGroup: state.currentPlaneGroup, nextPlaneGroup: state.nextPlaneGroup, proportion: delta}) : state.lchs, // if converging lchs, we apply this during attraction to transition pointer
+								...(isConvergingTransition(state) ? getLchs({planeGroup1: state.currentPlaneGroup, planeGroup2: state.nextPlaneGroup, proportion: delta}) : {}), // if converging lchs, we apply this during attraction to transition pointer
 							});
 						} else { // during restoration to original point
 							const delta = (offset - halfDuration) / halfDuration;
 							const updatedState = (() => {
+								// if transitioning and we've reached the transition point, change plane group
 								if (!state.previousPlaneGroup) {
 									const previousPlaneGroups = {
 										...state.previousPlaneGroups,
@@ -246,8 +261,9 @@ export default () => {
 										...state,
 										previousPlaneGroup: state.currentPlaneGroup,
 										currentPlaneGroup,
-										nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup, previousPlaneGroups}),
+										nextPlaneGroup: undefined,
 										previousPlaneGroups,
+										lchs: currentPlaneGroup.lchs,
 									};
 								}
 
@@ -264,7 +280,7 @@ export default () => {
 								...((updatedState.previousPlaneGroup.theta !== updatedState.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta}) : {}),
 								locus,
 								lastLocusUpdate: ms,
-								lchs: Array.isArray(state.nextPlaneGroup.mappings[0]) ? state.lchs : getLchs({currentPlaneGroup: state.currentPlaneGroup, nextPlaneGroup: state.nextPlaneGroup, proportion: delta}), // if diverging lchs, we apply this during restoration back to transition start point
+								...(isConvergingTransition(state) ? {} : getLchs({planeGroup1: updatedState.previousPlaneGroup, planeGroup2: updatedState.currentPlaneGroup, proportion: delta})), // if diverging lchs, we apply this during restoration back to transition start point
 							});
 						}
 					} else { // just attract to mouse pointer as normal now
@@ -274,6 +290,7 @@ export default () => {
 								...((state.previousPlaneGroup?.theta !== state.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta: state.currentPlaneGroup.theta}) : {}),
 								transitionStart: undefined,
 								previousPlaneGroup: undefined,
+								nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup: state.currentPlaneGroup, previousPlaneGroups: state.previousPlaneGroups}),
 							},
 							attractor: targetRef.current,
 							ms,
@@ -346,7 +363,7 @@ export default () => {
 	}, [locus, transitionPoint]); // run every time we set a new locus or apply transition
 
 	const deltaX = windowSize.height / 2 * Math.tan(theta);
-	console.log(lchs.map(getColor));
+	console.log(JSON.stringify(lchs.map(getColor)));
 
 	return <Stage
 		width={windowSize.width}
