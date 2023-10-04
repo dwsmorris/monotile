@@ -244,7 +244,7 @@ export default () => {
 								...state,
 								locus,
 								lastLocusUpdate: ms,
-								...(isConvergingTransition(state) ? getLchs({planeGroup1: state.currentPlaneGroup, planeGroup2: state.nextPlaneGroup, proportion: delta}) : {}), // if converging lchs, we apply this during attraction to transition pointer
+								...(isConvergingTransition(state) ? {lchs: getLchs({planeGroup1: state.currentPlaneGroup, planeGroup2: state.nextPlaneGroup, proportion: delta})} : {}), // if converging lchs, we apply this during attraction to transition pointer
 							});
 						} else { // during restoration to original point
 							const delta = (offset - halfDuration) / halfDuration;
@@ -280,7 +280,7 @@ export default () => {
 								...((updatedState.previousPlaneGroup.theta !== updatedState.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta}) : {}),
 								locus,
 								lastLocusUpdate: ms,
-								...(isConvergingTransition(state) ? {} : getLchs({planeGroup1: updatedState.previousPlaneGroup, planeGroup2: updatedState.currentPlaneGroup, proportion: delta})), // if diverging lchs, we apply this during restoration back to transition start point
+								...(isConvergingTransition(state) ? {} : {lchs: getLchs({planeGroup1: updatedState.previousPlaneGroup, planeGroup2: updatedState.currentPlaneGroup, proportion: delta})}), // if diverging lchs, we apply this during restoration back to transition start point
 							});
 						}
 					} else { // just attract to mouse pointer as normal now
@@ -291,6 +291,7 @@ export default () => {
 								transitionStart: undefined,
 								previousPlaneGroup: undefined,
 								nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup: state.currentPlaneGroup, previousPlaneGroups: state.previousPlaneGroups}),
+								lchs: state.currentPlaneGroup.lchs,
 							},
 							attractor: targetRef.current,
 							ms,
