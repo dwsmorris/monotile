@@ -4,7 +4,7 @@ import planeGroups from "./plane-groups.js";
 import getColor from "./get-color.js";
 
 const timeToSync = 200; //ms
-const transitionDuration = 500; // ms
+const transitionDuration = 1000; // ms
 
 const multiplyMatrix = ([a1, b1, c1, d1, e1, f1, g1, h1, i1], [a2, b2, c2, d2, e2, f2, g2, h2, i2]) => {
 	return [
@@ -78,10 +78,16 @@ const getMetrics = ({width, height, theta}) => {
 };
 const generateEquivalents = state => {
 	const {locus, getEquivalents, currentPlaneGroup: {planeGroup}} = state;
+	const equivalents = getEquivalents({locus, planeGroup});
+	const bbox = {xl: 0, xr: state.windowSize.width, yt: 0, yb: state.windowSize.height};
+	const equivalentPoints = equivalents.map(([x, y]) => ({x, y}));
+	const cells = new Voronoi().compute(equivalentPoints, bbox).cells;
 
 	return {
 		...state,
-		equivalents: getEquivalents({locus, planeGroup}),
+		equivalents,
+		cells,
+		equivalentPoints,
 	};
 };
 const getDivergingLchs = ({number, lch, proportion, property}) => {
@@ -205,6 +211,8 @@ export default () => {
 		lastLocusUpdate, // I
 		transitionStart, // {ms: I, locus: {X: I, Y: I}}?
 		lchs, // [{l: -1|0|1, c: -1|0|1, h: -1|0|1}]
+		cells, // {site: {voronoiId}, halfedges: [{edge: {va: {x, y}, vb: {x, y}}}]}
+		equivalentPoints, // [{voronoiId}]
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta})});
@@ -378,8 +386,16 @@ export default () => {
 			{/* vertical axes */}
 			{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + deltaX, 0, x - deltaX, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / 2)))}
 
+			{/* cells */}
+			{equivalentPoints.map(({voronoiId}, index) => [cells[voronoiId], index]).filter(([{halfedges}]) => halfedges.length > 2).map(([{halfedges}, index]) => {
+				const points = halfedges.flatMap(halfedge => (({x, y}) => [x, y])(halfedge.getEndpoint()));
+
+				return <Line key={`line-${index}`} points={points} closed fill={getColor(lchs[index % cellArity])} stroke="black"/>
+			})}
+
+
 			{/* symmetry equivalent points of locus */}
-			{equivalents.map(([X, Y], index) => <Circle key={index} x={X} y={Y} radius={10} fill={getColor(lchs[index % cellArity])}/>)}
+			{/*equivalents.map(([X, Y], index) => <Circle key={`circle-${index}`} x={X} y={Y} radius={10} fill={getColor(lchs[index % cellArity])}/>)*/}
 		</Layer>
 	</Stage>
 };
