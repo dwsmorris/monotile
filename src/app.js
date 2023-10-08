@@ -200,10 +200,10 @@ export default () => {
 	>
 		<Layer>
 			{/* horizontal axis */}
-			<Line points={[0, windowSize.height / 2, windowSize.width, windowSize.height / 2]} stroke="black" strokeWidth={0.3}/>
+			{showCircles ? <Line points={[0, windowSize.height / 2, windowSize.width, windowSize.height / 2]} stroke="black" strokeWidth={0.3}/> : null}
 
 			{/* vertical axes */}
-			{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + deltaX, 0, x - deltaX, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / 2)))}
+			{showCircles ? Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + deltaX, 0, x - deltaX, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / 2))) : null}
 
 			{/* cells */}
 			{showCircles ? null : cells.map((points, index) => points ? <Line key={`line-${index}`} points={points} closed fill={getColor(lchs[index % cellArity])} stroke="black"/> : null)}
