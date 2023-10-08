@@ -1,198 +1,16 @@
 import React, {useReducer, useEffect, useRef} from 'react';
 import {Stage, Layer, Circle, Line} from "react-konva";
-import planeGroups from "./plane-groups.js";
 import getColor from "./get-color.js";
+import getMetrics from './get-metrics.js';
+import transformVector from './transform-vector.js';
+import generateEquivalents from './generate-equivalents.js';
+import getLchs from "./get-lchs.js";
+import chooseNextPlaneGroup from './choose-next-plane-group.js';
+import getTheta from './get-theta.js';
+import applyAnimation from './apply-animation.js';
 
-const timeToSync = 200; //ms
 const transitionDuration = 1000; // ms
 
-const multiplyMatrix = ([a1, b1, c1, d1, e1, f1, g1, h1, i1], [a2, b2, c2, d2, e2, f2, g2, h2, i2]) => {
-	return [
-		a1*a2 + b1*d2 + c1*g2, a1*b2 + b1*e2 + c1*h2, a1*c2 + b1*f2 + c1*i2,
-		d1*a2 + e1*d2 + f1*g2, d1*b2 + e1*e2 + f1*h2, d1*c2 + e1*f2 + f1*i2,
-		g1*a2 + h1*d2 + i1*g2, g1*b2 + h1*e2 + i1*h2, g1*c2 + h1*f2 + i1*i2,
-	];
-};
-const transformVector = ([a, b, c, d, e, f, g, h, i]) => ([x, y, w = 1]) => [a*x + b*y + c*w, d*x + e*y + f*w];
-const rebaseCoordinate = coordinate => {
-	while (coordinate < 0) coordinate += 1;
-	while (coordinate > 1) coordinate -= 1;
-
-	return coordinate;
-};
-const getTheta = planeGroup => {
-	switch(planeGroup) {
-		case "p1":
-		case "p2":
-			return Math.random() * Math.PI / 4; // 0 to 45 degrees
-	}
-
-	return 0; // right angles (theta = gamma - pi/2)
-};
-
-const getMetrics = ({width, height, theta}) => {
-	const halfWidth = width / 2;
-	const halfHeight = height / 2;
-	const sinTheta = Math.sin(theta);
-	const cosTheta = Math.cos(theta);
-	const tanTheta = Math.tan(theta);
-	const toCoordinates = multiplyMatrix([ // convert to x and y coordinates (x now vertical, y horizontal)
-		0, cosTheta / halfHeight, 0,
-		1 / halfHeight, 0, 0,
-		0, 0, 1,
-	], multiplyMatrix([ // convert to X' and Y' along coordinate axes
-		1, tanTheta, 0,
-		0, 1 / cosTheta, 0,
-		0, 0, 1,
-	], [ // absolute XY to centered XY
-		1, 0, -halfWidth,
-		0, 1, -halfHeight,
-		0, 0, 1,
-	]));
-	const fromCoordinates = multiplyMatrix([
-		1, 0, halfWidth,
-		0, 1, halfHeight,
-		0, 0, 1,
-	], multiplyMatrix([ // [X', Y'] => [X, Y] orthogonal, origin centred
-		1, -sinTheta, 0,
-		0, cosTheta, 0,
-		0, 0, 1,
-	], [ // (x, y) => [X', Y'] aligned with plane group axes
-		0, halfHeight, 0,
-		halfHeight / cosTheta, 0, 0,
-		0, 0, 1,
-	]));
-	const topLeft = transformVector(toCoordinates)([0, 0]);
-	const maxCellLineX = -Math.floor(topLeft[1]) - 1;
-	const getEquivalents = ({locus: {X, Y}, planeGroup}) => {
-		const [x, y] = transformVector(toCoordinates)([X, Y]).map(rebaseCoordinate);
-		const symmetryEquivalents = planeGroups[planeGroup].equivalents.map(transform => transformVector(transform)([x, y]).map(rebaseCoordinate));
-		const translations = Array.from({length: maxCellLineX * 2 + 2}, (_, index) => index - maxCellLineX - 1).flatMap(yOffset => [0, -1].flatMap(
-			xOffset => symmetryEquivalents.map(([x, y]) => [x + xOffset, y + yOffset])
-		)).map(transformVector(fromCoordinates));
-
-		return translations;
-	};
-
-	return {windowSize: {width, height}, theta, maxCellLineX, getEquivalents, toCoordinates, fromCoordinates};
-};
-const generateEquivalents = state => {
-	const {locus, getEquivalents, currentPlaneGroup: {planeGroup}} = state;
-	const equivalents = getEquivalents({locus, planeGroup});
-	const bbox = {xl: 0, xr: state.windowSize.width, yt: 0, yb: state.windowSize.height};
-	const equivalentPoints = equivalents.map(([x, y]) => ({x, y}));
-	const cells = new Voronoi().compute(equivalentPoints, bbox).cells;
-
-	return {
-		...state,
-		equivalents,
-		cells,
-		equivalentPoints,
-	};
-};
-const getDivergingLchs = ({number, lch, proportion, property}) => {
-	return Array.from({length: number}).map((_, i) => ({
-		...lch,
-		[property]: (() => {
-			if (!i) return -proportion;
-			if (i === 2) return proportion;
-
-			return (number === 2) ? proportion : 0;
-		})(),
-	}));
-};
-const getConvergingLch = ({lchs, property}) => {
-	return {
-		...lchs[0],
-		[property]: undefined,
-	};
-};
-const getLchs = ({planeGroup1, planeGroup2, proportion}) => {
-	const isConverging = Array.isArray(planeGroup2.mappings[0]);
-
-	if (isConverging) {
-		if (proportion === 1) return planeGroup2.mappings.map(reference => getConvergingLch({lchs: reference.map(index => planeGroup1.lchs[index]), property: planeGroup2.property}));
-
-		return planeGroup1.lchs.map(lch => ({
-			...lch,
-			[planeGroup2.property]: lch[planeGroup2.property] * (1 - proportion),
-		}));
-	} else {
-		const mappings = planeGroup2.mappings;
-		const result = Array.from({length: mappings.length}); //! MUTATION
-
-		for (var j = 0; j < mappings.length; j++) {
-			const reference = mappings[j];
-
-			if (result[j]) continue; // already been calculated
-
-			// find all the diverging equivalents of this position
-			const divergingIndices = mappings.map((index, i) => [index, i]).filter(([index]) => reference === index).map(([, i]) => i);
-
-			if (divergingIndices.length === 1) { // no new sections are generated - maintain lch
-				result[divergingIndices[0]] = planeGroup1.lchs[reference];
-			} else { // diverging
-				const lchs = getDivergingLchs({number: divergingIndices.length, lch: planeGroup1.lchs[reference], proportion, property: planeGroup2.property});
-
-				for (var k = 0; k < divergingIndices.length; k += 1) {
-					result[divergingIndices[k]] = lchs[k];
-				}
-			}
-		}
-
-		return result;
-	}
-};
-const getProperty = ({currentPlaneGroup, nextPlaneGroup}) => {
-	if (Array.isArray(nextPlaneGroup.mappings[0])) { // converging
-		return currentPlaneGroup.property;
-	} else { // diverging - select an absent property
-		const lch = currentPlaneGroup.lchs[0];
-		const options = [
-			...((lch.l == null) ? ["l"] : []),
-			...((lch.c == null) ? ["c"] : []),
-			...((lch.h == null) ? ["h"] : []),
-		];
-
-		return options[Math.floor(Math.random() * options.length)];
-	}
-};
-const chooseNextPlaneGroup = ({currentPlaneGroup, previousPlaneGroups}) => {
-	const transitions = planeGroups[currentPlaneGroup.planeGroup].transitions;
-	const sortedTransitions = transitions.map(x => [previousPlaneGroups[x.planeGroup] || 0, x]).sort(([a], [b]) => a - b);
-	const leastVisited = [];
-	let i = 0;
-
-	while (sortedTransitions[i][0] === sortedTransitions[0][0]) {
-		leastVisited.push(sortedTransitions[i][1]);
-		i += 1;
-
-		if (i === leastVisited.length) break;
-	}
-
-	const nextPlaneGroup = leastVisited[Math.floor(Math.random() * leastVisited.length)];
-	nextPlaneGroup.property = getProperty({currentPlaneGroup, nextPlaneGroup});
-	const lchs = getLchs({planeGroup1: currentPlaneGroup, planeGroup2: nextPlaneGroup, proportion: 1});
-
-	return {
-		...nextPlaneGroup,
-		lchs,
-		theta: getTheta(nextPlaneGroup.planeGroup),
-	};
-};
-const applyAnimation = ({state, attractor, ms}) => {
-	const delta = Math.min((ms - state.lastLocusUpdate) / timeToSync, 1);
-	const locus = {
-		X: (state.locus.X * (1 - delta)) + (attractor.X * delta),
-		Y: (state.locus.Y * (1 - delta)) + (attractor.Y * delta),
-	};
-
-	return generateEquivalents({
-		...state,
-		locus,
-		lastLocusUpdate: ms,
-	});
-};
 const isConvergingTransition = ({previousPlaneGroup, currentPlaneGroup, nextPlaneGroup}) => Array.isArray(previousPlaneGroup ? currentPlaneGroup.mappings[0] : nextPlaneGroup.mappings[0]);
 
 export default () => {
@@ -392,7 +210,6 @@ export default () => {
 
 				return <Line key={`line-${index}`} points={points} closed fill={getColor(lchs[index % cellArity])} stroke="black"/>
 			})}
-
 
 			{/* symmetry equivalent points of locus */}
 			{/*equivalents.map(([X, Y], index) => <Circle key={`circle-${index}`} x={X} y={Y} radius={10} fill={getColor(lchs[index % cellArity])}/>)*/}
