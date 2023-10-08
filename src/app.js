@@ -8,7 +8,9 @@ import getLchs from "./get-lchs.js";
 import chooseNextPlaneGroup from './choose-next-plane-group.js';
 import getTheta from './get-theta.js';
 import applyAnimation from './apply-animation.js';
+import constants from "./constants.js";
 
+const {showCircles} = constants;
 const transitionDuration = 1000; // ms
 
 const isConvergingTransition = ({previousPlaneGroup, currentPlaneGroup, nextPlaneGroup}) => Array.isArray(previousPlaneGroup ? currentPlaneGroup.mappings[0] : nextPlaneGroup.mappings[0]);
@@ -29,8 +31,7 @@ export default () => {
 		lastLocusUpdate, // I
 		transitionStart, // {ms: I, locus: {X: I, Y: I}}?
 		lchs, // [{l: -1|0|1, c: -1|0|1, h: -1|0|1}]
-		cells, // {site: {voronoiId}, halfedges: [{edge: {va: {x, y}, vb: {x, y}}}]}
-		equivalentPoints, // [{voronoiId}]
+		cells, // [{x, y}]
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta})});
@@ -205,14 +206,10 @@ export default () => {
 			{Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + deltaX, 0, x - deltaX, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / 2)))}
 
 			{/* cells */}
-			{equivalentPoints.map(({voronoiId}, index) => [cells[voronoiId], index]).filter(([{halfedges}]) => halfedges.length > 2).map(([{halfedges}, index]) => {
-				const points = halfedges.flatMap(halfedge => (({x, y}) => [x, y])(halfedge.getEndpoint()));
-
-				return <Line key={`line-${index}`} points={points} closed fill={getColor(lchs[index % cellArity])} stroke="black"/>
-			})}
+			{showCircles ? null : cells.map((points, index) => points ? <Line key={`line-${index}`} points={points} closed fill={getColor(lchs[index % cellArity])} stroke="black"/> : null)}
 
 			{/* symmetry equivalent points of locus */}
-			{/*equivalents.map(([X, Y], index) => <Circle key={`circle-${index}`} x={X} y={Y} radius={10} fill={getColor(lchs[index % cellArity])}/>)*/}
+			{showCircles ? equivalents.map(([X, Y], index) => <Circle key={`circle-${index}`} x={X} y={Y} radius={10} fill={getColor(lchs[index % cellArity])}/>) : null}
 		</Layer>
 	</Stage>
 };

@@ -59,6 +59,18 @@ export default ({width, height, theta}) => {
 
 		return translations;
 	};
+	const getCells = ({locus, planeGroup}) => {
+		const bbox = {xl: 0, xr: width, yt: 0, yb: height};
+		const equivalentPoints = getEquivalents({locus, planeGroup}).map(([x, y]) => ({x, y}));
+		const cellDetails = new Voronoi().compute(equivalentPoints, bbox).cells;
+		const cells = equivalentPoints.map(({voronoiId}) => {
+			const {halfedges} = cellDetails[voronoiId];
 
-	return {windowSize: {width, height}, theta, maxCellLineX, getEquivalents, toCoordinates, fromCoordinates};
+			return halfedges && (halfedges.length > 2) && halfedges.flatMap(halfedge => (({x, y}) => [x, y])(halfedge.getEndpoint()));
+		});
+
+		return cells;
+	};
+
+	return {windowSize: {width, height}, theta, maxCellLineX, getEquivalents, getCells, toCoordinates, fromCoordinates};
 };
