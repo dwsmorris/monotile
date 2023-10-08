@@ -59,17 +59,35 @@ export default ({width, height, theta}) => {
 
 		return translations;
 	};
-	const getCells = ({locus, planeGroup}) => {
-		const bbox = {xl: 0, xr: width, yt: 0, yb: height};
-		const equivalentPoints = getEquivalents({locus, planeGroup}).map(([x, y]) => ({x, y}));
+	const getCells = ({locus: {X, Y}, planeGroup}) => {
+		const origin = transformVector(fromCoordinates)([0, 0]);
+		const point10 = transformVector(fromCoordinates)([1, 0]);
+		const point01 = transformVector(fromCoordinates)([0, 1]);
+		const xVector = [point10[0] - origin[0], point10[1] - origin[1]];
+		const yVector = [point01[0] - origin[0], point01[1] - origin[1]];
+		const topRight = transformVector(fromCoordinates)([-1, 2]);
+		const bottomLeft = transformVector(fromCoordinates)([2, -1]);
+		const bbox = {xl: bottomLeft[0], xr: topRight[0], yt: topRight[1], yb: bottomLeft[1]};
+		const [x, y] = transformVector(toCoordinates)([X, Y]).map(rebaseCoordinate);
+		const symmetryEquivalents = planeGroups[planeGroup].equivalents.map(transform => transformVector(transform)([x, y]).map(rebaseCoordinate));
+		const equivalentPoints = [0, -1, 1, -2, 2].flatMap(yOffset => [0, -1, 1, -2, 2].flatMap( // to avoid artifacts check 2 cells on every side
+			xOffset => symmetryEquivalents.map(([x, y]) => [x + xOffset, y + yOffset])
+		)).map(transformVector(fromCoordinates)).map(([x, y]) => ({x, y}));
 		const cellDetails = new Voronoi().compute(equivalentPoints, bbox).cells;
-		const cells = equivalentPoints.map(({voronoiId}) => {
-			const {halfedges} = cellDetails[voronoiId];
+		const cells = equivalentPoints.slice(0, symmetryEquivalents.length).map(({voronoiId}) => {
+			const details = cellDetails[voronoiId];
 
-			return halfedges && (halfedges.length > 2) && halfedges.flatMap(halfedge => (({x, y}) => [x, y])(halfedge.getEndpoint()));
+			if (!details) return undefined;
+
+			const {halfedges} = details;
+
+			return halfedges && (halfedges.length > 2) && halfedges.map(halfedge => (({x, y}) => [x, y])(halfedge.getEndpoint()));
 		});
+		const points = Array.from({length: maxCellLineX * 2 + 2}, (_, index) => index - maxCellLineX - 1).flatMap(yOffset => [-2, -1, 0, 1].flatMap(
+			xOffset => cells.map(vertices => vertices && vertices.flatMap(([x, y]) => [x + (xOffset * xVector[0]) + (yOffset * yVector[0]), y + (xOffset * xVector[1]) + (yOffset * yVector[1])]))
+		));
 
-		return cells;
+		return points;
 	};
 
 	return {windowSize: {width, height}, theta, maxCellLineX, getEquivalents, getCells, toCoordinates, fromCoordinates};
