@@ -21,6 +21,7 @@ export default () => {
 	const [{
 		windowSize, // {width: I, height: I}
 		maxCellLineX, // I
+		maxCellLineY, // I
 		equivalents, // [[I, I]]
 		locus, // {X: I, Y: I}
 		currentPlaneGroup, // {planeGroup: S, theta: R}
@@ -28,12 +29,12 @@ export default () => {
 		previousPlaneGroups, // {[planeGroup]: I}
 		nextPlaneGroup, // {planeGroup: S, positions: [[R, R]], theta: R}
 		theta, // R
+		aspect, // srt(0.5-2)
 		transitionPoint, // {X: R, Y: R}?
 		lastLocusUpdate, // I
 		transitionStart, // {ms: I, locus: {X: I, Y: I}}?
 		lchs, // [{l: -1|0|1, c: -1|0|1, h: -1|0|1}]
 		cells, // [{x, y}]
-		aspect, // 0.5-2
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta, aspect: state.aspect})});
@@ -107,7 +108,8 @@ export default () => {
 
 							return generateEquivalents({
 								...updatedState,
-								...((updatedState.previousPlaneGroup.theta !== updatedState.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta, aspect}) : {}),
+								...(((updatedState.previousPlaneGroup.theta !== updatedState.currentPlaneGroup.theta) ||
+									(updatedState.previousPlaneGroup.aspect !== updatedState.currentPlaneGroup.aspect)) ? getMetrics({...state.windowSize, theta, aspect}) : {}),
 								locus,
 								lastLocusUpdate: ms,
 								...(isConvergingTransition(state) ? {} : {lchs: getLchs({planeGroup1: updatedState.previousPlaneGroup, planeGroup2: updatedState.currentPlaneGroup, proportion: delta})}), // if diverging lchs, we apply this during restoration back to transition start point
@@ -205,10 +207,10 @@ export default () => {
 	>
 		<Layer>
 			{/* horizontal axis */}
-			{showCircles ? [1, 2, 3].map(offset => <Line key={`horizontal-${offset}`}points={[0, windowSize.height * offset / 4, windowSize.width, windowSize.height * offset / 4]} stroke="black" strokeWidth={0.3}/>) : null}
+			{showCircles ? Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[0, y, windowSize.width, y]}/>)((windowSize.height / 2) + (offset * windowSize.height * aspect / 4))) : null}
 
 			{/* vertical axes */}
-			{showCircles ? Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + deltaX, 0, x - deltaX, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / 4))) : null}
+			{showCircles ? Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + deltaX, 0, x - deltaX, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / aspect / 4))) : null}
 
 			{/* cells */}
 			{showCircles ? null : cells.map((points, index) => points ? <Line key={`line-${index}`} points={points} closed fill={getColor(lchs[index % cellArity])} stroke="black"/> : null)}

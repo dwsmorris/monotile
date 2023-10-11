@@ -39,6 +39,6 @@ export default ({currentPlaneGroup, previousPlaneGroups}) => {
 		...nextPlaneGroup,
 		lchs,
 		theta: getTheta(nextPlaneGroup.planeGroup),
-		aspect: getAspect(nextPlaneGroup.aspect),
+		aspect: getAspect(nextPlaneGroup.planeGroup),
 	};
 };
