@@ -19,12 +19,13 @@ const rebaseCoordinate = coordinate => {
 export default ({width, height, theta}) => {
 	const halfWidth = width / 2;
 	const halfHeight = height / 2;
+	const quarterHeight = height / 4;
 	const sinTheta = Math.sin(theta);
 	const cosTheta = Math.cos(theta);
 	const tanTheta = Math.tan(theta);
 	const toCoordinates = multiplyMatrix([ // convert to x and y coordinates (x now vertical, y horizontal)
-		0, cosTheta / halfHeight, 0,
-		1 / halfHeight, 0, 0,
+		0, cosTheta / quarterHeight, 0,
+		1 / quarterHeight, 0, 0,
 		0, 0, 1,
 	], multiplyMatrix([ // convert to X' and Y' along coordinate axes
 		1, tanTheta, 0,
@@ -44,8 +45,8 @@ export default ({width, height, theta}) => {
 		0, cosTheta, 0,
 		0, 0, 1,
 	], [ // (x, y) => [X', Y'] aligned with plane group axes
-		0, halfHeight, 0,
-		halfHeight / cosTheta, 0, 0,
+		0, quarterHeight, 0,
+		quarterHeight / cosTheta, 0, 0,
 		0, 0, 1,
 	]));
 	const topLeft = transformVector(toCoordinates)([0, 0]);
@@ -53,7 +54,7 @@ export default ({width, height, theta}) => {
 	const getEquivalents = ({locus: {X, Y}, planeGroup}) => {
 		const [x, y] = transformVector(toCoordinates)([X, Y]).map(rebaseCoordinate);
 		const symmetryEquivalents = planeGroups[planeGroup].equivalents.map(transform => transformVector(transform)([x, y]).map(rebaseCoordinate));
-		const translations = Array.from({length: maxCellLineX * 2 + 2}, (_, index) => index - maxCellLineX - 1).flatMap(yOffset => [0, -1].flatMap(
+		const translations = Array.from({length: maxCellLineX * 2 + 2}, (_, index) => index - maxCellLineX - 1).flatMap(yOffset => [0, -1, 1, -2].flatMap(
 			xOffset => symmetryEquivalents.map(([x, y]) => [x + xOffset, y + yOffset])
 		)).map(transformVector(fromCoordinates));
 
@@ -83,7 +84,7 @@ export default ({width, height, theta}) => {
 
 			return halfedges && (halfedges.length > 2) && halfedges.map(halfedge => (({x, y}) => [x, y])(halfedge.getEndpoint()));
 		});
-		const points = Array.from({length: maxCellLineX * 2 + 4}, (_, index) => index - maxCellLineX - 2).flatMap(yOffset => [-2, -1, 0, 1].flatMap(
+		const points = Array.from({length: maxCellLineX * 2 + 4}, (_, index) => index - maxCellLineX - 2).flatMap(yOffset => [-3, -2, -1, 0, 1, 2].flatMap(
 			xOffset => cells.map(vertices => vertices && vertices.flatMap(([x, y]) => [x + (xOffset * xVector[0]) + (yOffset * yVector[0]), y + (xOffset * xVector[1]) + (yOffset * yVector[1])]))
 		));
 
