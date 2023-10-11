@@ -1,6 +1,7 @@
 import planeGroups from "./plane-groups.js";
 import getLchs from "./get-lchs.js";
 import getTheta from "./get-theta.js";
+import getAspect from "./get-aspect.js";
 
 const getProperty = ({currentPlaneGroup, nextPlaneGroup}) => {
 	if (Array.isArray(nextPlaneGroup.mappings[0])) { // converging
@@ -38,5 +39,6 @@ export default ({currentPlaneGroup, previousPlaneGroups}) => {
 		...nextPlaneGroup,
 		lchs,
 		theta: getTheta(nextPlaneGroup.planeGroup),
+		aspect: getAspect(nextPlaneGroup.aspect),
 	};
 };

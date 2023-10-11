@@ -7,6 +7,7 @@ import generateEquivalents from './generate-equivalents.js';
 import getLchs from "./get-lchs.js";
 import chooseNextPlaneGroup from './choose-next-plane-group.js';
 import getTheta from './get-theta.js';
+import getAspect from "./get-aspect.js";
 import applyAnimation from './apply-animation.js';
 import constants from "./constants.js";
 
@@ -32,6 +33,7 @@ export default () => {
 		transitionStart, // {ms: I, locus: {X: I, Y: I}}?
 		lchs, // [{l: -1|0|1, c: -1|0|1, h: -1|0|1}]
 		cells, // [{x, y}]
+		aspect, // 0.5-2
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta})});
@@ -132,7 +134,7 @@ export default () => {
 
 		return state;
 	}, undefined, () => {
-		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), lchs: [{}], mappings: [0]}; // dummy mappings to check cell arity
+		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}], mappings: [0]}; // dummy mappings to check cell arity
 
 		return generateEquivalents({
 			...getMetrics({
@@ -146,6 +148,7 @@ export default () => {
 			},
 			currentPlaneGroup,
 			theta: currentPlaneGroup.theta,
+			aspect: currentPlaneGroup.aspect,
 			nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup, previousPlaneGroups: {}}),
 			previousPlaneGroups: {},
 			transitionPoint: undefined,
