@@ -36,7 +36,7 @@ export default () => {
 		aspect, // 0.5-2
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
-			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta})});
+			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta, aspect: state.aspect})});
 			case "CALCULATE_TRANSITION": return (() => {
 				const {X, Y} = state.locus;
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
@@ -99,6 +99,7 @@ export default () => {
 								return state;
 							})();
 							const theta = (updatedState.previousPlaneGroup.theta * (1 - delta)) + (updatedState.currentPlaneGroup.theta * delta);
+							const aspect = (updatedState.previousPlaneGroup.aspect * (1 - delta)) + (updatedState.currentPlaneGroup.aspect * delta);
 							const locus = {
 								X: (state.transitionPoint.X * (1 - delta)) + (state.transitionStart.locus.X * delta),
 								Y: (state.transitionPoint.Y * (1 - delta)) + (state.transitionStart.locus.Y * delta),
@@ -106,7 +107,7 @@ export default () => {
 
 							return generateEquivalents({
 								...updatedState,
-								...((updatedState.previousPlaneGroup.theta !== updatedState.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta}) : {}),
+								...((updatedState.previousPlaneGroup.theta !== updatedState.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta, aspect}) : {}),
 								locus,
 								lastLocusUpdate: ms,
 								...(isConvergingTransition(state) ? {} : {lchs: getLchs({planeGroup1: updatedState.previousPlaneGroup, planeGroup2: updatedState.currentPlaneGroup, proportion: delta})}), // if diverging lchs, we apply this during restoration back to transition start point
@@ -116,7 +117,7 @@ export default () => {
 						return applyAnimation({
 							state: {
 								...state,
-								...((state.previousPlaneGroup?.theta !== state.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta: state.currentPlaneGroup.theta}) : {}),
+								...((state.previousPlaneGroup?.theta !== state.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta: state.currentPlaneGroup.theta, aspect: state.currentPlaneGroup.aspect}) : {}),
 								transitionStart: undefined,
 								previousPlaneGroup: undefined,
 								nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup: state.currentPlaneGroup, previousPlaneGroups: state.previousPlaneGroups}),
@@ -141,6 +142,7 @@ export default () => {
 				width: window.innerWidth,
 				height: window.innerHeight,
 				theta: currentPlaneGroup.theta,
+				aspect: currentPlaneGroup.aspect,
 			}),
 			locus: {
 				X: window.innerWidth / 2,
