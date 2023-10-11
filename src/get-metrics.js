@@ -83,7 +83,7 @@ export default ({width, height, theta}) => {
 
 			return halfedges && (halfedges.length > 2) && halfedges.map(halfedge => (({x, y}) => [x, y])(halfedge.getEndpoint()));
 		});
-		const points = Array.from({length: maxCellLineX * 2 + 2}, (_, index) => index - maxCellLineX - 1).flatMap(yOffset => [-2, -1, 0, 1].flatMap(
+		const points = Array.from({length: maxCellLineX * 2 + 4}, (_, index) => index - maxCellLineX - 2).flatMap(yOffset => [-2, -1, 0, 1].flatMap(
 			xOffset => cells.map(vertices => vertices && vertices.flatMap(([x, y]) => [x + (xOffset * xVector[0]) + (yOffset * yVector[0]), y + (xOffset * xVector[1]) + (yOffset * yVector[1])]))
 		));
 
