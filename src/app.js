@@ -184,7 +184,7 @@ export default () => {
 		window.addEventListener('resize', handleResize);
 
 		// every period enact phase transition
-		const transitionInterval = setInterval(() => dispatch({type: "CALCULATE_TRANSITION"}), 111117000); // 7sec transition period
+		const transitionInterval = setInterval(() => dispatch({type: "CALCULATE_TRANSITION"}), 7000); // 7sec transition period
 
 		// Clean up the event listener when the component is unmounted
 		return () => {
