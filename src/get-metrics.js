@@ -16,7 +16,7 @@ const rebaseCoordinate = coordinate => {
 };
 
 
-export default ({width, height, theta, aspect}) => {
+export default ({width, height, theta, aspect, flipped}) => {
 	const halfWidth = width / 2;
 	const halfHeight = height / 2;
 	const cellHeight = height / 4 * aspect;
@@ -28,7 +28,11 @@ export default ({width, height, theta, aspect}) => {
 		0, cosTheta / cellHeight, 0,
 		1 / cellWidth, 0, 0,
 		0, 0, 1,
-	], multiplyMatrix([ // convert to X' and Y' along coordinate axes
+	], multiplyMatrix(flipped ? [ // X' coincident with -Y, Y' theta degrees from X
+		tanTheta, -1, 0,
+		1 / cosTheta, 0, 0,
+		0, 0, 1,
+	] : [ // X' coincident with X, Y' theta degrees from Y
 		1, tanTheta, 0,
 		0, 1 / cosTheta, 0,
 		0, 0, 1,
@@ -41,7 +45,11 @@ export default ({width, height, theta, aspect}) => {
 		1, 0, halfWidth,
 		0, 1, halfHeight,
 		0, 0, 1,
-	], multiplyMatrix([ // [X', Y'] => [X, Y] orthogonal, origin centred
+	], multiplyMatrix(flipped ? [
+		0, cosTheta, 0,
+		-1, sinTheta,  0,
+		0, 0, 1,
+	] : [ // [X', Y'] => [X, Y] orthogonal, origin centred
 		1, -sinTheta, 0,
 		0, cosTheta, 0,
 		0, 0, 1,
@@ -50,9 +58,9 @@ export default ({width, height, theta, aspect}) => {
 		cellHeight / cosTheta, 0, 0,
 		0, 0, 1,
 	]));
-	const topLeft = transformVector(toCoordinates)([0, 0]);
-	const maxCellLineX = -Math.floor(topLeft[1]) - 1;
-	const maxCellLineY = -Math.floor(topLeft[0]) - 1;
+	const corner = transformVector(toCoordinates)([0, flipped ? height : 0]);
+	const maxCellLineX = -Math.floor(corner[1]) - 1;
+	const maxCellLineY = -Math.floor(corner[0]) - 1;
 	const getEquivalents = ({locus: {X, Y}, planeGroup}) => {
 		const [x, y] = transformVector(toCoordinates)([X, Y]).map(rebaseCoordinate);
 		const symmetryEquivalents = planeGroups[planeGroup].equivalents.map(transform => transformVector(transform)([x, y]).map(rebaseCoordinate));
@@ -93,5 +101,5 @@ export default ({width, height, theta, aspect}) => {
 		return points;
 	};
 
-	return {windowSize: {width, height}, theta, aspect, maxCellLineX, maxCellLineY, getEquivalents, getCells, toCoordinates, fromCoordinates};
+	return {windowSize: {width, height}, theta, aspect, maxCellLineX, maxCellLineY, getEquivalents, getCells, toCoordinates, fromCoordinates, flipped};
 };

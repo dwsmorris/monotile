@@ -35,9 +35,10 @@ export default () => {
 		transitionStart, // {ms: I, locus: {X: I, Y: I}}?
 		lchs, // [{l: -1|0|1, c: -1|0|1, h: -1|0|1}]
 		cells, // [{x, y}]
+		flipped, // B
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
-			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta, aspect: state.aspect})});
+			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta, aspect: state.aspect, flipped: state.flipped})});
 			case "CALCULATE_TRANSITION": return (() => {
 				const {X, Y} = state.locus;
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
@@ -109,7 +110,7 @@ export default () => {
 							return generateEquivalents({
 								...updatedState,
 								...(((updatedState.previousPlaneGroup.theta !== updatedState.currentPlaneGroup.theta) ||
-									(updatedState.previousPlaneGroup.aspect !== updatedState.currentPlaneGroup.aspect)) ? getMetrics({...state.windowSize, theta, aspect}) : {}),
+									(updatedState.previousPlaneGroup.aspect !== updatedState.currentPlaneGroup.aspect)) ? getMetrics({...state.windowSize, theta, aspect, flipped: updatedState.flipped}) : {}),
 								locus,
 								lastLocusUpdate: ms,
 								...(isConvergingTransition(state) ? {} : {lchs: getLchs({planeGroup1: updatedState.previousPlaneGroup, planeGroup2: updatedState.currentPlaneGroup, proportion: delta})}), // if diverging lchs, we apply this during restoration back to transition start point
@@ -119,7 +120,7 @@ export default () => {
 						return applyAnimation({
 							state: {
 								...state,
-								...((state.previousPlaneGroup?.theta !== state.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta: state.currentPlaneGroup.theta, aspect: state.currentPlaneGroup.aspect}) : {}),
+								...((state.previousPlaneGroup?.theta !== state.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta: state.currentPlaneGroup.theta, aspect: state.currentPlaneGroup.aspect, flipped: state.flipped}) : {}),
 								transitionStart: undefined,
 								previousPlaneGroup: undefined,
 								nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup: state.currentPlaneGroup, previousPlaneGroups: state.previousPlaneGroups}),
@@ -137,7 +138,7 @@ export default () => {
 
 		return state;
 	}, undefined, () => {
-		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}], mappings: [0]}; // dummy mappings to check cell arity
+		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}], mappings: [0], flipped: true}; // dummy mappings to check cell arity
 
 		return generateEquivalents({
 			...getMetrics({
@@ -145,6 +146,7 @@ export default () => {
 				height: window.innerHeight,
 				theta: currentPlaneGroup.theta,
 				aspect: currentPlaneGroup.aspect,
+				flipped: currentPlaneGroup.flipped,
 			}),
 			locus: {
 				X: window.innerWidth / 2,
@@ -182,7 +184,7 @@ export default () => {
 		window.addEventListener('resize', handleResize);
 
 		// every period enact phase transition
-		const transitionInterval = setInterval(() => dispatch({type: "CALCULATE_TRANSITION"}), 7000); // 7sec transition period
+		const transitionInterval = setInterval(() => dispatch({type: "CALCULATE_TRANSITION"}), 111117000); // 7sec transition period
 
 		// Clean up the event listener when the component is unmounted
 		return () => {
@@ -197,7 +199,7 @@ export default () => {
 		return () => cancelAnimationFrame(animationFrameRef.current);
 	}, [locus, transitionPoint]); // run every time we set a new locus or apply transition
 
-	const deltaX = windowSize.height / 2 * Math.tan(theta);
+	const delta = windowSize[flipped ? "width" : "height"] / 2 * Math.tan(theta);
 	const cellArity = currentPlaneGroup.mappings.length;
 
 	return <Stage
@@ -207,10 +209,22 @@ export default () => {
 	>
 		<Layer>
 			{/* horizontal axis */}
-			{showCircles ? Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[0, y, windowSize.width, y]}/>)((windowSize.height / 2) + (offset * windowSize.height * aspect / 4))) : null}
+			{(() => {  // circles mode
+				if (!showCircles) return null;
+
+				if (flipped) return Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[y, 0, y, windowSize.height]}/>)((windowSize.height / 2) + (offset * windowSize.height * aspect / 4)));
+
+				return Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[0, y, windowSize.width, y]}/>)((windowSize.height / 2) + (offset * windowSize.height * aspect / 4)));
+			})()}
 
 			{/* vertical axes */}
-			{showCircles ? Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + deltaX, 0, x - deltaX, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / aspect / 4))) : null}
+			{(() => {
+				if (!showCircles) return null;
+
+				if (flipped) return Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[0, x - delta, windowSize.width, x + delta]}/>)((windowSize.width / 2) + (offset * windowSize.height / aspect / 4)));
+
+				return Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + delta, 0, x - delta, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / aspect / 4)));
+			})()}
 
 			{/* cells */}
 			{showCircles ? null : cells.map((points, index) => points ? <Line key={`line-${index}`} points={points} closed fill={getColor(lchs[index % cellArity])} stroke="black"/> : null)}

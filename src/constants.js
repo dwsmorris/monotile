@@ -1,4 +1,4 @@
 
 export default {
-	showCircles: false,
+	showCircles: true,
 };
