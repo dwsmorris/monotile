@@ -17,17 +17,22 @@ const getConvergingLch = ({lchs, property}) => {
 	};
 };
 
-export default ({planeGroup1, planeGroup2, proportion}) => {
-	const isConverging = Array.isArray(planeGroup2.mappings[0]);
+export default ({planeGroup1, planeGroup2, progress}) => {
+	const type = planeGroup2.type;
 
-	if (isConverging) {
-		if (proportion === 1) return planeGroup2.mappings.map(reference => getConvergingLch({lchs: reference.map(index => planeGroup1.lchs[index]), property: planeGroup2.property}));
+	if (type === "CONVERGING") {
+		const proportion = progress + 1;
+
+		if (proportion >= 1) return planeGroup2.mappings.map(reference => getConvergingLch({lchs: reference.map(index => planeGroup1.lchs[index]), property: planeGroup2.property}));
 
 		return planeGroup1.lchs.map(lch => ({
 			...lch,
 			[planeGroup2.property]: lch[planeGroup2.property] * (1 - proportion),
 		}));
-	} else {
+	} else if (type === "DIVERGING") {
+		if (progress < 0) return planeGroup1.lchs;
+
+		const proportion = progress;
 		const mappings = planeGroup2.mappings;
 		const result = Array.from({length: mappings.length}); //! MUTATION
 

@@ -10,11 +10,10 @@ import getTheta from './get-theta.js';
 import getAspect from "./get-aspect.js";
 import applyAnimation from './apply-animation.js';
 import constants from "./constants.js";
+import getTransitionDetails from "./get-transition-details.js";
 
 const {showCircles} = constants;
-const transitionDuration = 1000; // ms
-
-const isConvergingTransition = ({previousPlaneGroup, currentPlaneGroup, nextPlaneGroup}) => Array.isArray(previousPlaneGroup ? currentPlaneGroup.mappings[0] : nextPlaneGroup.mappings[0]);
+const transitionDuration = 10000; // ms
 
 export default () => {
 	const targetRef = useRef({X: window.innerWidth / 2, Y: window.innerHeight / 2});
@@ -36,6 +35,8 @@ export default () => {
 		lchs, // [{l: -1|0|1, c: -1|0|1, h: -1|0|1}]
 		cells, // [{x, y}]
 		flipped, // B
+		cellHeight,
+		cellWidth,
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta, aspect: state.aspect, flipped: state.flipped})});
@@ -60,76 +61,36 @@ export default () => {
 
 				if (state.transitionStart) {
 					const offset = ms - state.transitionStart.ms;
-
-					if (offset < transitionDuration) { // during transition
-						const halfDuration = transitionDuration / 2;
-
-						if (offset < halfDuration) { // during attraction to transition pointer
-							const delta = offset / halfDuration;
-							const locus = {
-								X: (state.transitionStart.locus.X * (1 - delta)) + (state.transitionPoint.X * delta),
-								Y: (state.transitionStart.locus.Y * (1 - delta)) + (state.transitionPoint.Y * delta),
-							};
-
-							return generateEquivalents({
-								...state,
-								locus,
-								lastLocusUpdate: ms,
-								...(isConvergingTransition(state) ? {lchs: getLchs({planeGroup1: state.currentPlaneGroup, planeGroup2: state.nextPlaneGroup, proportion: delta})} : {}), // if converging lchs, we apply this during attraction to transition pointer
-							});
-						} else { // during restoration to original point
-							const delta = (offset - halfDuration) / halfDuration;
-							const updatedState = (() => {
-								// if transitioning and we've reached the transition point, change plane group
-								if (!state.previousPlaneGroup) {
-									const previousPlaneGroups = {
-										...state.previousPlaneGroups,
-										[state.currentPlaneGroup.planeGroup]: (state.previousPlaneGroups[state.currentPlaneGroup.planeGroup] || 0) + 1
-									};
-									const currentPlaneGroup = state.nextPlaneGroup;
-
-									return {
-										...state,
-										previousPlaneGroup: state.currentPlaneGroup,
-										currentPlaneGroup,
-										nextPlaneGroup: undefined,
-										previousPlaneGroups,
-										lchs: currentPlaneGroup.lchs,
-									};
-								}
-
-								return state;
-							})();
-							const theta = (updatedState.previousPlaneGroup.theta * (1 - delta)) + (updatedState.currentPlaneGroup.theta * delta);
-							const aspect = (updatedState.previousPlaneGroup.aspect * (1 - delta)) + (updatedState.currentPlaneGroup.aspect * delta);
-							const locus = {
-								X: (state.transitionPoint.X * (1 - delta)) + (state.transitionStart.locus.X * delta),
-								Y: (state.transitionPoint.Y * (1 - delta)) + (state.transitionStart.locus.Y * delta),
-							};
-
-							return generateEquivalents({
-								...updatedState,
-								...(((updatedState.previousPlaneGroup.theta !== updatedState.currentPlaneGroup.theta) ||
-									(updatedState.previousPlaneGroup.aspect !== updatedState.currentPlaneGroup.aspect)) ? getMetrics({...state.windowSize, theta, aspect, flipped: updatedState.flipped}) : {}),
-								locus,
-								lastLocusUpdate: ms,
-								...(isConvergingTransition(state) ? {} : {lchs: getLchs({planeGroup1: updatedState.previousPlaneGroup, planeGroup2: updatedState.currentPlaneGroup, proportion: delta})}), // if diverging lchs, we apply this during restoration back to transition start point
-							});
-						}
-					} else { // just attract to mouse pointer as normal now
-						return applyAnimation({
-							state: {
-								...state,
-								...((state.previousPlaneGroup?.theta !== state.currentPlaneGroup.theta) ? getMetrics({...state.windowSize, theta: state.currentPlaneGroup.theta, aspect: state.currentPlaneGroup.aspect, flipped: state.flipped}) : {}),
-								transitionStart: undefined,
-								previousPlaneGroup: undefined,
-								nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup: state.currentPlaneGroup, previousPlaneGroups: state.previousPlaneGroups}),
-								lchs: state.currentPlaneGroup.lchs,
+					const progress = Math.min((offset / transitionDuration) * 2 - 1, 1);
+					const magProgress = Math.abs(progress);
+					const locus = {
+						X: (state.transitionStart.locus.X * magProgress) + (state.transitionPoint.X * (1 - magProgress)),
+						Y: (state.transitionStart.locus.Y * magProgress) + (state.transitionPoint.Y * (1 - magProgress)),
+					};
+					const transitionDetails = getTransitionDetails({planeGroup1: state.previousPlaneGroup || state.currentPlaneGroup, planeGroup2: state.nextPlaneGroup || state.currentPlaneGroup, progress});
+					const updatedState = {
+						...state,
+						locus,
+						lastLocusUpdate: ms,
+						...transitionDetails,
+						...(((progress > 0) && !state.previousPlaneGroup) ? {
+							previousPlaneGroups: {
+								...state.previousPlaneGroups,
+								[state.currentPlaneGroup.planeGroup]: (state.previousPlaneGroups[state.currentPlaneGroup.planeGroup] || 0) + 1,
 							},
-							attractor: targetRef.current,
-							ms,
-						});
-					}
+							previousPlaneGroup: state.currentPlaneGroup,
+							currentPlaneGroup: state.nextPlaneGroup,
+							nextPlaneGroup: undefined,
+						} : {}),
+						...((progress === 1) ? {
+							transitionStart: undefined,
+							previousPlaneGroup: undefined,
+							nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup: state.currentPlaneGroup, previousPlaneGroups: state.previousPlaneGroups}),
+						} : {}),
+					};
+					const metrics = getMetrics(updatedState);
+
+					return generateEquivalents(metrics);
 				} else {
 					return applyAnimation({state, attractor: targetRef.current, ms});
 				}
@@ -138,7 +99,7 @@ export default () => {
 
 		return state;
 	}, undefined, () => {
-		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}], mappings: [0], flipped: true}; // dummy mappings to check cell arity
+		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}], mappings: [0], flipped: false, equivalents: [1]}; // dummy mappings to check cell arity
 
 		return generateEquivalents({
 			...getMetrics({
@@ -147,21 +108,19 @@ export default () => {
 				theta: currentPlaneGroup.theta,
 				aspect: currentPlaneGroup.aspect,
 				flipped: currentPlaneGroup.flipped,
+				locus: {
+					X: window.innerWidth / 2,
+					Y: window.innerHeight / 2,
+				},
+				currentPlaneGroup,
+				nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup, previousPlaneGroups: {}}),
+				previousPlaneGroups: {},
+				transitionPoint: undefined,
+				lastLocusUpdate: Date.now(),
+				transitionStartTime: undefined,
+				previousPlaneGroup: undefined,
+				lchs: [{}],
 			}),
-			locus: {
-				X: window.innerWidth / 2,
-				Y: window.innerHeight / 2,
-			},
-			currentPlaneGroup,
-			theta: currentPlaneGroup.theta,
-			aspect: currentPlaneGroup.aspect,
-			nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup, previousPlaneGroups: {}}),
-			previousPlaneGroups: {},
-			transitionPoint: undefined,
-			lastLocusUpdate: Date.now(),
-			transitionStartTime: undefined,
-			previousPlaneGroup: undefined,
-			lchs: [{}],
 		});
 	});
 	const animationFrameRef = useRef();
@@ -184,7 +143,7 @@ export default () => {
 		window.addEventListener('resize', handleResize);
 
 		// every period enact phase transition
-		const transitionInterval = setInterval(() => dispatch({type: "CALCULATE_TRANSITION"}), 7000); // 7sec transition period
+		const transitionInterval = setInterval(() => dispatch({type: "CALCULATE_TRANSITION"}), 17000); // 7sec transition period
 
 		// Clean up the event listener when the component is unmounted
 		return () => {
@@ -212,18 +171,18 @@ export default () => {
 			{(() => {  // circles mode
 				if (!showCircles) return null;
 
-				if (flipped) return Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[y, 0, y, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height * aspect / 4)));
+				if (flipped) return Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[y, 0, y, windowSize.height]}/>)((windowSize.width / 2) + (offset * cellHeight)));
 
-				return Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[0, y, windowSize.width, y]}/>)((windowSize.height / 2) + (offset * windowSize.height * aspect / 4)));
+				return Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[0, y, windowSize.width, y]}/>)((windowSize.height / 2) + (offset * cellHeight)));
 			})()}
 
 			{/* vertical axes */}
 			{(() => {
 				if (!showCircles) return null;
 
-				if (flipped) return Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[0, x - delta, windowSize.width, x + delta]}/>)((windowSize.height / 2) + (offset * windowSize.height / aspect / 4)));
+				if (flipped) return Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[0, x - delta, windowSize.width, x + delta]}/>)((windowSize.height / 2) + (offset * cellWidth)));
 
-				return Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + delta, 0, x - delta, windowSize.height]}/>)((windowSize.width / 2) + (offset * windowSize.height / aspect / 4)));
+				return Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + delta, 0, x - delta, windowSize.height]}/>)((windowSize.width / 2) + (offset * cellWidth)));
 			})()}
 
 			{/* cells */}

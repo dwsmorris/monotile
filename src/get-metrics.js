@@ -16,11 +16,13 @@ const rebaseCoordinate = coordinate => {
 };
 
 
-export default ({width, height, theta, aspect, flipped}) => {
+export default state => {
+	const {width, height, theta, aspect, flipped, currentPlaneGroup} = state;
+	const multiplicityFactor = Math.sqrt(planeGroups[currentPlaneGroup.planeGroup].equivalents.length);
 	const halfWidth = width / 2;
 	const halfHeight = height / 2;
-	const cellHeight = height / 4 * aspect;
-	const cellWidth = height / 4 / aspect;
+	const cellHeight = height / 4 * aspect * multiplicityFactor;
+	const cellWidth = height / 4 / aspect * multiplicityFactor;
 	const sinTheta = Math.sin(theta);
 	const cosTheta = Math.cos(theta);
 	const tanTheta = Math.tan(theta);
@@ -101,5 +103,16 @@ export default ({width, height, theta, aspect, flipped}) => {
 		return points;
 	};
 
-	return {windowSize: {width, height}, theta, aspect, maxCellLineX, maxCellLineY, getEquivalents, getCells, toCoordinates, fromCoordinates, flipped};
+	return {
+		...state,
+		windowSize: {width, height},
+		maxCellLineX,
+		maxCellLineY,
+		getEquivalents,
+		getCells,
+		toCoordinates,
+		fromCoordinates,
+		cellHeight,
+		cellWidth,
+	};
 };

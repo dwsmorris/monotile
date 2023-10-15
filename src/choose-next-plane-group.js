@@ -33,12 +33,16 @@ export default ({currentPlaneGroup, previousPlaneGroups}) => {
 
 	const nextPlaneGroup = leastVisited[Math.floor(Math.random() * leastVisited.length)];
 	nextPlaneGroup.property = getProperty({currentPlaneGroup, nextPlaneGroup});
-	const lchs = getLchs({planeGroup1: currentPlaneGroup, planeGroup2: nextPlaneGroup, proportion: 1});
+	//const lchs = getLchs({planeGroup1: currentPlaneGroup, planeGroup2: nextPlaneGroup, proportion: 1});
+	const aspect = getAspect(nextPlaneGroup.planeGroup);
 
-	return {
+	const result = {
 		...nextPlaneGroup,
-		lchs,
+		//lchs, // needed?
 		theta: getTheta(nextPlaneGroup.planeGroup),
-		aspect: getAspect(nextPlaneGroup.planeGroup),
+		aspect,
+		positions: nextPlaneGroup.getPositions(aspect),
 	};
+	console.log(result);
+	return result;
 };
