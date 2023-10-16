@@ -44,17 +44,19 @@ export default () => {
 				const {X, Y} = state.locus;
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
 				const cell = [Math.floor(x), Math.floor(y)];
+				const {fromCoordinates} = getMetrics({
+					...state,
+					...getTransitionDetails({planeGroup1: state.currentPlaneGroup, planeGroup2: state.nextPlaneGroup, progress: 0}),
+				});
 				// generate transition points in this cell and those at +1 along each axis
-				const transitionPoints = state.nextPlaneGroup.positions.flatMap(([x, y], position) => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => 
-					[transformVector(state.fromCoordinates)([a + cell[0] + x, b + cell[1] + y]), {position, translation: [a + cell[0], b + cell[1]]}])).map(([[x, y], indices]) => {
+				const transitionPoints = state.nextPlaneGroup.positions.flatMap(([x, y]) => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => transformVector(fromCoordinates)([a + cell[0] + x, b + cell[1] + y])).map(([x, y]) => {
 						const diffX = X - x;
 						const diffY = Y - y;
 
-						return [(diffX * diffX) + (diffY * diffY), indices, [x, y]];
-					}).sort(([a], [b]) => a - b);
-				const closest = transitionPoints[0][2];
+						return [(diffX * diffX) + (diffY * diffY), [x, y]];
+					})).sort(([a], [b]) => a - b);
 
-				return {...state, transitionPoint: {X: closest[0], Y: closest[1], ...transitionPoints[0][1]}, transitionStart: {ms: Date.now(), locus: state.locus}};
+				return {...state, transitionPoint: transitionPoints[0][1], transitionStart: {ms: Date.now(), locus: state.locus}};
 			})();
 			case "ANIMATE": return (() => {
 				const ms = Date.now();
@@ -64,8 +66,8 @@ export default () => {
 					const progress = Math.min((offset / transitionDuration) * 2 - 1, 1);
 					const magProgress = Math.abs(progress);
 					const locus = {
-						X: (state.transitionStart.locus.X * magProgress) + (state.transitionPoint.X * (1 - magProgress)),
-						Y: (state.transitionStart.locus.Y * magProgress) + (state.transitionPoint.Y * (1 - magProgress)),
+						X: (state.transitionStart.locus.X * magProgress) + (state.transitionPoint[0] * (1 - magProgress)),
+						Y: (state.transitionStart.locus.Y * magProgress) + (state.transitionPoint[1] * (1 - magProgress)),
 					};
 					const transitionDetails = getTransitionDetails({planeGroup1: state.previousPlaneGroup || state.currentPlaneGroup, planeGroup2: state.nextPlaneGroup || state.currentPlaneGroup, progress});
 					const updatedState = {

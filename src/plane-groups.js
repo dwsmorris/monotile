@@ -38,7 +38,7 @@ export default {
 				const midValue = (value1 + value2) / 2;
 
 				if (value2 < 1) { // flat - side-by-side subcells
-					if (progress < 0) { // each subcell
+					if (progress <= 0) { // each subcell
 						const terminalValue = midValue * Math.SQRT2;
 
 						return interpolate({value1, value2: terminalValue, proportion: progress + 1});
@@ -46,7 +46,7 @@ export default {
 						return interpolate({value1: midValue, value2, proportion: progress});
 					}
 				} else { // tall - one-upon-the-other subcells
-					if (progress < 0) { // each subcell
+					if (progress <= 0) { // each subcell
 						const terminalValue = midValue / Math.SQRT2;
 
 						return interpolate({value1, value2: terminalValue, proportion: progress + 1});
