@@ -1,4 +1,6 @@
 
+const hexagonalAspect = Math.sqrt(Math.cos(Math.PI / 6));
+
 // ASPECT = sqrt(H/W) - it is this because it is multiplied by the width and the height is divided by it
 export default planeGroup => {
 	switch(planeGroup) {
@@ -12,6 +14,9 @@ export default planeGroup => {
 
 				return Math.sqrt(Math.random() + 1);
 			})();
+
+		case "p3":
+			return hexagonalAspect;
 	}
 
 	return 1;

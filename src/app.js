@@ -39,7 +39,7 @@ export default () => {
 		cellWidth,
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
-			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...action.payload, theta: state.theta, aspect: state.aspect, flipped: state.flipped})});
+			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...state, ...action.payload})});
 			case "CALCULATE_TRANSITION": return (() => {
 				const {X, Y} = state.locus;
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
@@ -82,6 +82,7 @@ export default () => {
 							},
 							previousPlaneGroup: state.currentPlaneGroup,
 							currentPlaneGroup: state.nextPlaneGroup,
+							flipped: state.nextPlaneGroup.flipped || false,
 							nextPlaneGroup: undefined,
 						} : {}),
 						...((progress === 1) ? (() => {
@@ -109,7 +110,8 @@ export default () => {
 
 		return state;
 	}, undefined, () => {
-		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}], mappings: [0], flipped: false, equivalents: [1]}; // dummy mappings to check cell arity
+		//const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}], mappings: [0], flipped: false, equivalents: [1]}; // dummy mappings to check cell arity
+		const currentPlaneGroup = {planeGroup: "p3", theta: getTheta("p3"), aspect: getAspect("p3"), lchs: [{}, {}, {}], mappings: [0, 0, 0], flipped: true, equivalents: [0, 0, 0]};
 
 		return generateEquivalents({
 			...getMetrics({

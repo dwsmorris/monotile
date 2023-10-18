@@ -83,4 +83,19 @@ export default {
 			},
 		}],
 	},
+	p3: {
+		equivalents: [
+			[1, 0, 0, 0, 1, 0, 0, 0, 1],
+			[0, -1, 0, 1, -1, 0, 0, 0, 1],
+			[-1, 1, 0, -1, 0, 0, 0, 0, 1],
+		],
+		flipped: true,
+		transitions: [{
+			planeGroup: "p1",
+			mappings: [0],
+			getPositions: () => [[1/3, 0], [2/3, 0], [0, 1/3], [0, 2/3], [1/3, 1/3], [2/3, 2/3]],
+			getTheta: interpolateAfterTransition,
+			getAspect: interpolateAfterTransition,
+		}],
+	}
 };
