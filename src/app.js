@@ -1,22 +1,20 @@
-import React, {useReducer, useEffect, useRef} from 'react';
+import React, {useReducer, useEffect, useRef, useState} from 'react';
 import {Stage, Layer, Circle, Line} from "react-konva";
 import getColor from "./get-color.js";
 import getMetrics from './get-metrics.js';
 import transformVector from './transform-vector.js';
 import generateEquivalents from './generate-equivalents.js';
-import getLchs from "./get-lchs.js";
 import chooseNextPlaneGroup from './choose-next-plane-group.js';
 import getTheta from './get-theta.js';
 import getAspect from "./get-aspect.js";
 import applyAnimation from './apply-animation.js';
-import constants from "./constants.js";
 import getTransitionDetails from "./get-transition-details.js";
 
-const {showCircles} = constants;
 const transitionDuration = 10000; // ms
 
 export default () => {
 	const targetRef = useRef({X: window.innerWidth / 2, Y: window.innerHeight / 2});
+	const showCirclesRef = useRef(false);
 	const [{
 		windowSize, // {width: I, height: I}
 		maxCellLineX, // I
@@ -39,7 +37,7 @@ export default () => {
 		cellWidth,
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
-			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...state, ...action.payload})});
+			case "WINDOW_SIZE": return generateEquivalents({...state, ...getMetrics({...state, ...action.payload}), showCircles: showCirclesRef.current});
 			case "CALCULATE_TRANSITION": return (() => {
 				const {X, Y} = state.locus;
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
@@ -102,9 +100,9 @@ export default () => {
 					};
 					const metrics = getMetrics(updatedState);
 
-					return generateEquivalents(metrics);
+					return generateEquivalents({...metrics, showCircles: showCirclesRef.current});
 				} else {
-					return applyAnimation({state, attractor: targetRef.current, ms});
+					return applyAnimation({state, attractor: targetRef.current, ms, showCircles: showCirclesRef.current});
 				}
 			})();
 		}
@@ -134,6 +132,7 @@ export default () => {
 				previousPlaneGroup: undefined,
 				lchs: [{}],
 			}),
+			showCircles: showCirclesRef.current,
 		});
 	});
 	const animationFrameRef = useRef();
@@ -158,9 +157,15 @@ export default () => {
 		// every period enact phase transition
 		const transitionInterval = setInterval(() => dispatch({type: "CALCULATE_TRANSITION"}), 17000); // 7sec transition period
 
+		// keypress toggle of view
+		const handleKeyPress = e => showCirclesRef.current = !showCirclesRef.current;
+
+		window.addEventListener("keydown", handleKeyPress);
+
 		// Clean up the event listener when the component is unmounted
 		return () => {
 			window.removeEventListener('resize', handleResize);
+			window,removeEventListener("keydown", handleKeyPress);
 			clearInterval(transitionInterval);
 		};
 	}, []); // Empty dependency array to ensure this effect only runs once
@@ -182,7 +187,7 @@ export default () => {
 		<Layer>
 			{/* horizontal axis */}
 			{(() => {  // circles mode
-				if (!showCircles) return null;
+				if (!showCirclesRef.current) return null;
 
 				if (flipped) return Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[y, 0, y, windowSize.height]}/>)((windowSize.width / 2) + (offset * cellHeight)));
 
@@ -191,7 +196,7 @@ export default () => {
 
 			{/* vertical axes */}
 			{(() => {
-				if (!showCircles) return null;
+				if (!showCirclesRef.current) return null;
 
 				if (flipped) return Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[0, x - delta, windowSize.width, x + delta]}/>)((windowSize.height / 2) + (offset * cellWidth)));
 
@@ -199,10 +204,10 @@ export default () => {
 			})()}
 
 			{/* cells */}
-			{showCircles ? null : cells.map((points, index) => points ? <Line key={`line-${index}`} points={points} closed fill={getColor(lchs[index % cellArity])} stroke="black"/> : null)}
+			{showCirclesRef.current ? null : cells.map((points, index) => points ? <Line key={`line-${index}`} points={points} closed fill={getColor(lchs[index % cellArity])} stroke="black"/> : null)}
 
 			{/* symmetry equivalent points of locus */}
-			{showCircles ? equivalents.map(([X, Y], index) => <Circle key={`circle-${index}`} x={X} y={Y} radius={10} fill={getColor(lchs[index % cellArity])}/>) : null}
+			{showCirclesRef.current ? equivalents.map(([X, Y], index) => <Circle key={`circle-${index}`} x={X} y={Y} radius={10} fill={getColor(lchs[index % cellArity])}/>) : null}
 		</Layer>
 	</Stage>
 };
