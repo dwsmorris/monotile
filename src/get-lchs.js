@@ -10,26 +10,26 @@ const getDivergingLchs = ({number, lch, proportion, property}) => {
 		})(),
 	}));
 };
-const getConvergingLch = ({lchs, property}) => {
+const getConvergingLch = ({lch, property}) => {
 	return {
-		...lchs[0],
+		...lch,
 		[property]: undefined,
 	};
 };
 
 export default ({planeGroup1, planeGroup2, progress}) => {
-	const type = planeGroup2.type;
+	if (planeGroup1.mappings.length > planeGroup2.mappings.length) { // converging - colour change before transition
+		if (progress > 0) return planeGroup2.mappings.map(reference => getConvergingLch({lch: planeGroup1.lchs[reference], property: planeGroup2.property}));
 
-	if (type === "CONVERGING") {
 		const proportion = progress + 1;
-
-		if (proportion >= 1) return planeGroup2.mappings.map(reference => getConvergingLch({lchs: reference.map(index => planeGroup1.lchs[index]), property: planeGroup2.property}));
 
 		return planeGroup1.lchs.map(lch => ({
 			...lch,
 			[planeGroup2.property]: lch[planeGroup2.property] * (1 - proportion),
 		}));
-	} else if (type === "DIVERGING") {
+	} else if (planeGroup1.mappings.length === planeGroup2.mappings.length) {
+		return planeGroup1.lchs;
+	} else { // diverging colours - change occurs after transition
 		if (progress < 0) return planeGroup1.lchs;
 
 		const proportion = progress;

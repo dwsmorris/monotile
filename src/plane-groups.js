@@ -1,4 +1,3 @@
-import getLchs from "./get-lchs";
 
 const interpolate = ({value1, value2, proportion}) => {
 	// linear
@@ -23,16 +22,10 @@ export default {
 		equivalents: [
 			[1, 0, 0, 0, 1, 0, 0, 0, 1],
 		],
-		axes: [1, 0, 0, 1],
 		transitions: [{
 			planeGroup: "p2",
 			mappings: [0, 0],
 			getPositions: aspect => (aspect < 1) ? [[0, 0.5], [0.5, 0.5]] : [[0.5, 0], [0.5, 0.5]],
-			getAxes: ({aspect, progress}) => {
-				if (aspect < 1) return [1, 0, 0, 2];
-
-				return [2, 0, 0, 1];
-			},
 			getTheta: interpolateAcrossTransition,
 			getAspect: ({value1, value2, progress}) => {
 				const midValue = (value1 + value2) / 2;
@@ -55,8 +48,6 @@ export default {
 					}
 				}
 			},
-			getLchs: getLchs,
-			type: "DIVERGING",
 		}],
 	},
 	p2: {
@@ -66,8 +57,30 @@ export default {
 		],
 		transitions: [{
 			planeGroup: "p1",
-			mappings: [[0, 1]],
-			positions: [[0, 0], [0, 0.5], [0.5, 0], [0.5, 0.5]],
+			mappings: [0],
+			getPositions: aspect => (aspect < 1) ? [[0.25, 0], [0.25, 0.5], [0.75, 0], [0.75, 0.5]] : [[0, 0.25], [0, 0.75], [0.5, 0.25], [0.5, 0.75]],
+			getTheta: interpolateAcrossTransition,
+			getAspect: ({value1, value2, progress}) => {
+				const midValue = (value1 + value2) / 2;
+
+				if (value2 < 1) { // flat cells on top of each other
+					if (progress <= 0) { // joined cell
+						return interpolate({value1, value2: midValue, proportion: progress + 1});
+					} else {
+						const startValue = midValue / Math.SQRT2;
+
+						return interpolate({value1: startValue, value2, proportion: progress});
+					}
+				} else { // cells side-by-side
+					if (progress <= 0) {
+						return interpolate({value1, value2: midValue, proportion: progress + 1});
+					} else {
+						const startValue = midValue * Math.SQRT2;
+
+						return interpolate({value1: startValue, value2, proportion: progress});
+					}
+				}
+			},
 		}],
 	},
 };

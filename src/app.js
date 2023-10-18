@@ -84,11 +84,19 @@ export default () => {
 							currentPlaneGroup: state.nextPlaneGroup,
 							nextPlaneGroup: undefined,
 						} : {}),
-						...((progress === 1) ? {
-							transitionStart: undefined,
-							previousPlaneGroup: undefined,
-							nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup: state.currentPlaneGroup, previousPlaneGroups: state.previousPlaneGroups}),
-						} : {}),
+						...((progress === 1) ? (() => {
+							const currentPlaneGroup = {
+								...state.currentPlaneGroup,
+								lchs: state.lchs,
+							};
+
+							return {
+								transitionStart: undefined,
+								previousPlaneGroup: undefined,
+								nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup, previousPlaneGroups: state.previousPlaneGroups}),
+								currentPlaneGroup,
+							};
+						})() : {}),
 					};
 					const metrics = getMetrics(updatedState);
 

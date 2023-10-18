@@ -4,8 +4,10 @@ import getTheta from "./get-theta.js";
 import getAspect from "./get-aspect.js";
 
 const getProperty = ({currentPlaneGroup, nextPlaneGroup}) => {
-	if (Array.isArray(nextPlaneGroup.mappings[0])) { // converging
+	if (nextPlaneGroup.mappings.length < currentPlaneGroup.mappings.length) { // converging
 		return currentPlaneGroup.property;
+	} else if (nextPlaneGroup.mappings.length === currentPlaneGroup.mappings.length) { // same - no property
+		return "";
 	} else { // diverging - select an absent property
 		const lch = currentPlaneGroup.lchs[0];
 		const options = [
@@ -33,16 +35,13 @@ export default ({currentPlaneGroup, previousPlaneGroups}) => {
 
 	const nextPlaneGroup = leastVisited[Math.floor(Math.random() * leastVisited.length)];
 	nextPlaneGroup.property = getProperty({currentPlaneGroup, nextPlaneGroup});
-	//const lchs = getLchs({planeGroup1: currentPlaneGroup, planeGroup2: nextPlaneGroup, proportion: 1});
 	const aspect = getAspect(nextPlaneGroup.planeGroup);
-
 	const result = {
 		...nextPlaneGroup,
-		//lchs, // needed?
 		theta: getTheta(nextPlaneGroup.planeGroup),
 		aspect,
 		positions: nextPlaneGroup.getPositions(aspect),
 	};
-	console.log(result);
+
 	return result;
 };
