@@ -3,10 +3,8 @@ import getTheta from "./get-theta.js";
 import getAspect from "./get-aspect.js";
 
 const getProperty = ({currentPlaneGroup, nextPlaneGroup}) => {
-	if (nextPlaneGroup.mappings.length < currentPlaneGroup.mappings.length) { // converging
+	if (nextPlaneGroup.mappings.length <= currentPlaneGroup.mappings.length) { // converging or same number of asymmetric units
 		return currentPlaneGroup.property;
-	} else if (nextPlaneGroup.mappings.length === currentPlaneGroup.mappings.length) { // same - no property
-		return "";
 	} else { // diverging - select an absent property
 		const lch = currentPlaneGroup.lchs[0];
 		const options = [
