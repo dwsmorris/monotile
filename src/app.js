@@ -49,12 +49,13 @@ export default () => {
 					...getTransitionDetails({planeGroup1: state.currentPlaneGroup, planeGroup2: state.nextPlaneGroup, progress: 0}),
 				});
 				// generate transition points in this cell and those at +1 along each axis
-				const transitionPoints = state.nextPlaneGroup.positions.flatMap(([x, y]) => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => transformVector(fromCoordinates)([a + cell[0] + x, b + cell[1] + y])).map(([x, y]) => {
-						const diffX = X - x;
-						const diffY = Y - y;
+				const transitionPoints = state.nextPlaneGroup.positions.map(([a, b]) => {
+					const [x, y] = transformVector(fromCoordinates)([cell[0] + a, cell[1] + b]);
+					const diffX = X - x;
+					const diffY = Y - y;
 
-						return [(diffX * diffX) + (diffY * diffY), [x, y]];
-					})).sort(([a], [b]) => a - b);
+					return [(diffX * diffX) + (diffY * diffY), [x, y]];
+				}).sort(([a], [b]) => a - b);
 
 				return {...state, transitionPoint: transitionPoints[0][1], transitionStart: {ms: Date.now(), locus: state.locus}};
 			})();

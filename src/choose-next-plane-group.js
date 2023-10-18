@@ -18,6 +18,13 @@ const getProperty = ({currentPlaneGroup, nextPlaneGroup}) => {
 		return options[Math.floor(Math.random() * options.length)];
 	}
 };
+// any points on cell boundaries should be duplicated on the other side
+const generateAllPositions = positions => positions.flatMap(([x, y]) => [
+	[x, y],
+	...(!x ? [[1, y]] : []),
+	...(!y ? [[x, 1]] : []),
+	...((!x && !y) ? [[1, 1]] : []),
+]);
 
 export default ({currentPlaneGroup, previousPlaneGroups}) => {
 	const transitions = planeGroups[currentPlaneGroup.planeGroup].transitions;
@@ -39,7 +46,7 @@ export default ({currentPlaneGroup, previousPlaneGroups}) => {
 		...nextPlaneGroup,
 		theta: getTheta(nextPlaneGroup.planeGroup),
 		aspect,
-		positions: nextPlaneGroup.getPositions(aspect),
+		positions: generateAllPositions(nextPlaneGroup.getPositions(aspect)),
 		flipped: planeGroups[nextPlaneGroup.planeGroup].flipped,
 	};
 
