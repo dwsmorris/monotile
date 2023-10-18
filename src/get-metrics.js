@@ -78,9 +78,19 @@ export default state => {
 		const point01 = transformVector(fromCoordinates)([0, 1]);
 		const xVector = [point10[0] - origin[0], point10[1] - origin[1]];
 		const yVector = [point01[0] - origin[0], point01[1] - origin[1]];
-		const topRight = transformVector(fromCoordinates)([-1, 2]);
-		const bottomLeft = transformVector(fromCoordinates)([2, -1]);
-		const bbox = {xl: bottomLeft[0], xr: topRight[0], yt: topRight[1], yb: bottomLeft[1]};
+		const bbox = (() => {
+			if (planeGroups[planeGroup].flipped) {
+				const topLeft = transformVector(fromCoordinates)([-1, 2]);
+				const bottomRight = transformVector(fromCoordinates)([2, -1]);
+
+				return {xl: topLeft[0], xr: bottomRight[0], yt: topLeft[1], yb: bottomRight[1]};
+			} else {
+				const topRight = transformVector(fromCoordinates)([-1, 2]);
+				const bottomLeft = transformVector(fromCoordinates)([2, -1]);
+
+				return {xl: bottomLeft[0], xr: topRight[0], yt: topRight[1], yb: bottomLeft[1]};
+			}
+		})();
 		const [x, y] = transformVector(toCoordinates)([X, Y]).map(rebaseCoordinate);
 		const symmetryEquivalents = planeGroups[planeGroup].equivalents.map(transform => transformVector(transform)([x, y]).map(rebaseCoordinate));
 		const equivalentPoints = [0, -1, 1, -2, 2].flatMap(yOffset => [0, -1, 1, -2, 2].flatMap( // to avoid artifacts check 2 cells on every side
