@@ -1,5 +1,4 @@
 import planeGroups from "./plane-groups.js";
-import getLchs from "./get-lchs.js";
 import getTheta from "./get-theta.js";
 import getAspect from "./get-aspect.js";
 
@@ -41,6 +40,7 @@ export default ({currentPlaneGroup, previousPlaneGroups}) => {
 		theta: getTheta(nextPlaneGroup.planeGroup),
 		aspect,
 		positions: nextPlaneGroup.getPositions(aspect),
+		flipped: planeGroups[nextPlaneGroup.planeGroup].flipped,
 	};
 
 	return result;

@@ -82,7 +82,7 @@ export default () => {
 							},
 							previousPlaneGroup: state.currentPlaneGroup,
 							currentPlaneGroup: state.nextPlaneGroup,
-							flipped: state.nextPlaneGroup.flipped || false,
+							flipped: state.nextPlaneGroup.flipped,
 							nextPlaneGroup: undefined,
 						} : {}),
 						...((progress === 1) ? (() => {
@@ -110,8 +110,8 @@ export default () => {
 
 		return state;
 	}, undefined, () => {
-		//const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}], mappings: [0], flipped: false, equivalents: [1]}; // dummy mappings to check cell arity
-		const currentPlaneGroup = {planeGroup: "p3", theta: getTheta("p3"), aspect: getAspect("p3"), lchs: [{}, {}, {}], mappings: [0, 0, 0], flipped: true, equivalents: [0, 0, 0]};
+		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}], mappings: [0], equivalents: [1]}; // dummy mappings to check cell arity
+		// const currentPlaneGroup = {planeGroup: "p3", theta: getTheta("p3"), aspect: getAspect("p3"), lchs: [{}, {}, {}], mappings: [0, 0, 0], flipped: true, equivalents: [0, 0, 0]};
 
 		return generateEquivalents({
 			...getMetrics({

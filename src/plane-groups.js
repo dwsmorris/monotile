@@ -48,6 +48,12 @@ export default {
 					}
 				}
 			},
+		}, {
+			planeGroup: "p3",
+			mappings: [0, 0, 0],
+			getPositions: () => [[1/3, 2/3], [2/3, 1/3]],
+			getTheta: interpolateBeforeTransition,
+			getAspect: interpolateBeforeTransition,
 		}],
 	},
 	p2: {
