@@ -49,7 +49,7 @@ export default ({currentPlaneGroup, previousPlaneGroups}) => {
 		leastVisited.push(sortedTransitions[i][1]);
 		i += 1;
 
-		if (i === leastVisited.length) break;
+		if (i === sortedTransitions.length) break;
 	}
 
 	const nextPlaneGroup = leastVisited[Math.floor(Math.random() * leastVisited.length)];
