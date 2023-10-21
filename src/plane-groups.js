@@ -1,20 +1,27 @@
 
 const interpolate = ({value1, value2, proportion}) => {
-	// linear
-	return (proportion * value2) + ((1 - proportion) * value1);
+	const linear = Math.sqrt(proportion);
+
+	return (linear * value2) + ((1 - linear) * value1);
 };
 const interpolateBeforeTransition = ({value1, value2, progress}) => {
 	if (progress >= 0) return value2;
 
-	return interpolate({value1, value2, proportion: progress + 1});
+	const proportion = Math.sqrt(progress + 1); // ease in
+
+	return interpolate({value1, value2, proportion});
 };
 const interpolateAfterTransition = ({value1, value2, progress}) => {
 	if (progress <= 0) return value1;
 
-	return interpolate({value1, value2, proportion: progress});
+	const proportion = progress * progress; // east out
+
+	return interpolate({value1, value2, proportion});
 };
 const interpolateAcrossTransition = ({value1, value2, progress}) => {
-	return interpolate({value1, value2, proportion: (progress + 1) / 2});
+	const proportion = (progress <= 0) ? (Math.sqrt(progress + 1) * 0.5) : (progress * progress * 0.5 + 0.5); // ease in out
+
+	return interpolate({value1, value2, proportion});
 };
 
 export default {
