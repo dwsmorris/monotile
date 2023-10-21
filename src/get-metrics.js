@@ -18,14 +18,14 @@ const rebaseCoordinate = coordinate => {
 
 export default state => {
 	const {width, height, theta, aspect, flipped, currentPlaneGroup} = state;
+	const sinTheta = Math.sin(theta);
+	const cosTheta = Math.cos(theta);
+	const tanTheta = Math.tan(theta);
 	const multiplicityFactor = Math.sqrt(planeGroups[currentPlaneGroup.planeGroup].equivalents.length);
 	const halfWidth = width / 2;
 	const halfHeight = height / 2;
 	const cellHeight = height / 4 * aspect * multiplicityFactor;
-	const cellWidth = height / 4 / aspect * multiplicityFactor;
-	const sinTheta = Math.sin(theta);
-	const cosTheta = Math.cos(theta);
-	const tanTheta = Math.tan(theta);
+	const cellWidth = height / 4 / aspect * multiplicityFactor; // aspect takes into account height differential in hexagonal system
 	const toCoordinates = multiplyMatrix([ // convert to x and y coordinates (x now vertical, y horizontal)
 		0, cosTheta / cellHeight, 0,
 		1 / cellWidth, 0, 0,

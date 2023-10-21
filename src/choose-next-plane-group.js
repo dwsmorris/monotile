@@ -3,8 +3,23 @@ import getTheta from "./get-theta.js";
 import getAspect from "./get-aspect.js";
 
 const getProperty = ({currentPlaneGroup, nextPlaneGroup}) => {
-	if (nextPlaneGroup.mappings.length <= currentPlaneGroup.mappings.length) { // converging or same number of asymmetric units
-		return currentPlaneGroup.property;
+	const currentMultiplicity = planeGroups[currentPlaneGroup.planeGroup].equivalents.length;
+	const nextMultiplicity = planeGroups[nextPlaneGroup.planeGroup].equivalents.length;
+	if (nextMultiplicity < currentMultiplicity) { // converging
+		const factor = currentMultiplicity / nextMultiplicity;
+
+		if (factor === 3) {
+			const {l, c, h} = currentPlaneGroup.lchs.find(({l, c, h}) => [l, c, h].some(value => value === 0)); // find the 0 field representing the triple value
+
+			return (l === 0) ? "l" : (c === 0) ? "c" : "h";
+		}
+
+		// 1 and -1 values
+		const {l, c, h} = currentPlaneGroup.lchs.find(({l, c, h}) => [l, c, h].some(value => Math.abs(value) === 1));
+
+		return (Math.abs(l) === 1) ? "l" : (Math.abs(c) === 1) ? "c" : "h";
+	} else if (nextMultiplicity === currentMultiplicity) { // same number of asymmetric units
+		return "";
 	} else { // diverging - select an absent property
 		const lch = currentPlaneGroup.lchs[0];
 		const options = [

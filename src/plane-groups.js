@@ -87,6 +87,12 @@ export default {
 					}
 				}
 			},
+		}, {
+			planeGroup: "p6",
+			mappings: [0, 0, 0, 1, 1, 1],
+			getPositions: () => [[1/3, 2/3], [2/3, 1/3]],
+			getTheta: interpolateBeforeTransition,
+			getAspect: interpolateBeforeTransition,
 		}],
 	},
 	p3: {
@@ -103,5 +109,23 @@ export default {
 			getTheta: interpolateAfterTransition,
 			getAspect: interpolateAfterTransition,
 		}],
-	}
+	},
+	p6: {
+		equivalents: [
+			[1, 0, 0, 0, 1, 0, 0, 0, 1],
+			[0, -1, 0, 1, -1, 0, 0, 0, 1],
+			[-1, 1, 0, -1, 0, 0, 0, 0, 1],
+			[-1, 0, 0, 0, -1, 0, 0, 0, 1],
+			[0, 1, 0, -1, 1, 0, 0, 0, 1],
+			[1, -1, 0, 1, 0, 0, 0, 0, 1],
+		],
+		flipped: true,
+		transitions: [{
+			planeGroup: "p2",
+			mappings: [0, 3],
+			getPositions: () => [[1/3, 0], [2/3, 0], [0, 1/3], [0, 2/3], [1/3, 1/3], [2/3, 2/3]],
+			getTheta: interpolateAfterTransition,
+			getAspect: interpolateAfterTransition,
+		}],
+	},
 };

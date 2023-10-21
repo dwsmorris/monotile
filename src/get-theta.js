@@ -6,7 +6,9 @@ export default planeGroup => {
 		case "p2":
 			return Math.random() * Math.PI / 4; // 0 to 45 degrees
 
-		case "p3": return hexagonalTheta;
+		case "p3":
+		case "p6":
+			return hexagonalTheta;
 	}
 
 	return 0; // right angles (theta = gamma - pi/2)

@@ -9,12 +9,13 @@ import getTheta from './get-theta.js';
 import getAspect from "./get-aspect.js";
 import applyAnimation from './apply-animation.js';
 import getTransitionDetails from "./get-transition-details.js";
+import planeGroups from "./plane-groups.js";
 
 const transitionDuration = 10000; // ms
 
 export default () => {
 	const targetRef = useRef({X: window.innerWidth / 2, Y: window.innerHeight / 2});
-	const showCirclesRef = useRef(false);
+	const showCirclesRef = useRef(true);
 	const [{
 		windowSize, // {width: I, height: I}
 		maxCellLineX, // I
@@ -87,7 +88,7 @@ export default () => {
 						...((progress === 1) ? (() => {
 							const currentPlaneGroup = {
 								...state.currentPlaneGroup,
-								lchs: state.lchs,
+								lchs: transitionDetails.lchs,
 							};
 
 							return {
@@ -109,8 +110,9 @@ export default () => {
 
 		return state;
 	}, undefined, () => {
-		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}], mappings: [0], equivalents: [1]}; // dummy mappings to check cell arity
-		// const currentPlaneGroup = {planeGroup: "p3", theta: getTheta("p3"), aspect: getAspect("p3"), lchs: [{}, {}, {}], mappings: [0, 0, 0], flipped: true, equivalents: [0, 0, 0]};
+		//const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}]}; // dummy mappings to check cell arity
+		// const currentPlaneGroup = {planeGroup: "p3", theta: getTheta("p3"), aspect: getAspect("p3"), lchs: [{h: -1}, {h : 0}, {h : 1}], flipped: true};
+		const currentPlaneGroup = {planeGroup: "p6", theta: getTheta("p6"), aspect: getAspect("p6"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true}
 
 		return generateEquivalents({
 			...getMetrics({
@@ -177,7 +179,7 @@ export default () => {
 	}, [locus, transitionPoint]); // run every time we set a new locus or apply transition
 
 	const delta = windowSize[flipped ? "width" : "height"] / 2 * Math.tan(theta);
-	const cellArity = currentPlaneGroup.mappings.length;
+	const cellArity = planeGroups[currentPlaneGroup.planeGroup].equivalents.length;
 
 	return <Stage
 		width={windowSize.width}
