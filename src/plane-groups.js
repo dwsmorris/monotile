@@ -130,7 +130,7 @@ export default {
 		flipped: true,
 		transitions: [{
 			planeGroup: "p2",
-			mappings: [0, 3],
+			mappings: [0, 4],
 			getPositions: () => [[1/3, 0], [2/3, 0], [0, 1/3], [0, 2/3], [1/3, 1/3], [2/3, 2/3]],
 			getTheta: interpolateAfterTransition,
 			getAspect: interpolateAfterTransition,
