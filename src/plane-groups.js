@@ -23,6 +23,7 @@ const interpolateAcrossTransition = ({value1, value2, progress}) => {
 
 	return interpolate({value1, value2, proportion});
 };
+const noTransition = ({value1}) => value1;
 
 export default {
 	p1: {
@@ -133,6 +134,30 @@ export default {
 			getPositions: () => [[1/3, 0], [2/3, 0], [0, 1/3], [0, 2/3], [1/3, 1/3], [2/3, 2/3]],
 			getTheta: interpolateAfterTransition,
 			getAspect: interpolateAfterTransition,
+		}, {
+			planeGroup: "p31m",
+			mappings: [0, 1, 2, 5, 4, 3],
+			getPositions: () => [[0.5, 0.25], [0.75, 0.25], [0.75, 0.5], [0.25, 0.5], [0.25, 0.75], [0.5, 0.75]],
+			getTheta: noTransition,
+			getAspect: noTransition,
+		}],
+	},
+	p31m: {
+		equivalents: [
+			[1, 0, 0, 0, 1, 0, 0, 0, 1],
+			[0, -1, 0, 1, -1, 0, 0, 0, 1],
+			[-1, 1, 0, -1, 0, 0, 0, 0, 1],
+			[0, 1, 0, 1, 0, 0, 0, 0, 1],
+			[1, -1, 0, 0, -1, 0, 0, 0, 1],
+			[-1, 0, 0, -1, 1, 0, 0, 0, 1],
+		],
+		flipped: true,
+		transitions: [{
+			planeGroup: "p6",
+			mappings: [0, 1, 2, 5, 4, 3],
+			getPositions: () => [[0.5, 0.25], [0.75, 0.25], [0.75, 0.5], [0.25, 0.5], [0.25, 0.75], [0.5, 0.75]],
+			getTheta: noTransition,
+			getAspect: noTransition,
 		}],
 	},
 };

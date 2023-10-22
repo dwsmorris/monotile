@@ -17,6 +17,7 @@ export default planeGroup => {
 
 		case "p3":
 		case "p6":
+		case "p31m":
 			return hexagonalAspect;
 	}
 
