@@ -20,7 +20,7 @@ const getConvergingLch = ({lch, property}) => {
 
 export default ({planeGroup1, planeGroup2, progress}) => {
 	const currentMultiplicity = planeGroups[planeGroup1.planeGroup].equivalents.length;
-	const nextMultiplicity = planeGroups[planeGroup2.planeGroup].equivalents.length;
+	const nextMultiplicity = planeGroup2.mappings.length;
 
 	if (currentMultiplicity > nextMultiplicity) { // converging - colour change before transition
 		if (progress > 0) return planeGroup2.mappings.map(reference => getConvergingLch({lch: planeGroup1.lchs[reference], property: planeGroup2.property}));
@@ -32,7 +32,7 @@ export default ({planeGroup1, planeGroup2, progress}) => {
 			[planeGroup2.property]: lch[planeGroup2.property] * (1 - proportion),
 		}));
 	} else if (currentMultiplicity === nextMultiplicity) {
-		return planeGroup1.lchs;
+		return (progress < 0) ? planeGroup1.lchs : planeGroup2.lchs;
 	} else { // diverging colours - change occurs after transition
 		if (progress < 0) return planeGroup1.lchs;
 
