@@ -11,7 +11,7 @@ import applyAnimation from './apply-animation.js';
 import getTransitionDetails from "./get-transition-details.js";
 import planeGroups from "./plane-groups.js";
 
-const slow = true;
+const slow = false;
 const transitionDuration = slow ? 10000 : 1000; // ms
 const cycleDuration = slow ? 17000 : 7000;
 
