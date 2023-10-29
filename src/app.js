@@ -47,18 +47,19 @@ export default () => {
 				const cell = [Math.floor(x), Math.floor(y)];
 				const {fromCoordinates} = getMetrics({
 					...state,
-					...getTransitionDetails({planeGroup1: state.currentPlaneGroup, planeGroup2: state.nextPlaneGroup, progress: 0}),
+					...getTransitionDetails({planeGroup1: state.currentPlaneGroup, planeGroup2: state.nextPlaneGroup, progress: -1E-10}),
 				});
-				// generate transition points in this cell and those at +1 along each axis
-				const transitionPoints = state.nextPlaneGroup.positions.map(([a, b]) => {
+				// generate transition points in this cell
+				const transitionPoints = state.nextPlaneGroup.positions.map(([a, b]) => { // note positions is in the coordinate frame of currentPlaneGroup
 					const [x, y] = transformVector(fromCoordinates)([cell[0] + a, cell[1] + b]);
 					const diffX = X - x;
 					const diffY = Y - y;
 
 					return [(diffX * diffX) + (diffY * diffY), [x, y]];
 				}).sort(([a], [b]) => a - b);
+				const transitionPoint = transitionPoints[0][1];
 
-				return {...state, transitionPoint: transitionPoints[0][1], transitionStart: {ms: Date.now(), locus: state.locus}};
+				return {...state, transitionPoint, transitionStart: {ms: Date.now(), locus: state.locus}};
 			})();
 			case "ANIMATE": return (() => {
 				const ms = Date.now();
