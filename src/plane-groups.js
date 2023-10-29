@@ -12,14 +12,14 @@ const interpolateBeforeTransition = ({value1, value2, progress}) => {
 	return interpolate({value1, value2, proportion});
 };
 const interpolateAfterTransition = ({value1, value2, progress}) => {
-	if (progress <= 0) return value1;
+	if (progress < 0) return value1;
 
 	const proportion = progress * progress; // east out
 
 	return interpolate({value1, value2, proportion});
 };
 const interpolateAcrossTransition = ({value1, value2, progress}) => {
-	const proportion = (progress <= 0) ? (Math.sqrt(progress + 1) * 0.5) : (progress * progress * 0.5 + 0.5); // ease in out
+	const proportion = (progress < 0) ? (Math.sqrt(progress + 1) * 0.5) : (progress * progress * 0.5 + 0.5); // ease in out
 
 	return interpolate({value1, value2, proportion});
 };
