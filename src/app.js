@@ -220,35 +220,40 @@ export default () => {
 	const delta = windowSize[flipped ? "width" : "height"] / 2 * Math.tan(theta);
 	const cellArity = planeGroups[currentPlaneGroup.planeGroup].equivalents.length;
 
-	return <Stage
-		width={windowSize.width}
-		height={windowSize.height}
-		onPointerMove={e => targetRef.current = {X: e.evt.clientX, Y: e.evt.clientY}}
-	>
-		<Layer>
-			{/* horizontal axis */}
-			{(() => {  // circles mode
-				if (!showCirclesRef.current) return null;
+	return <>
+		<Stage
+			width={windowSize.width}
+			height={windowSize.height}
+			onPointerMove={e => targetRef.current = {X: e.evt.clientX, Y: e.evt.clientY}}
+		>
+			<Layer>
+				{/* horizontal axis */}
+				{(() => {  // circles mode
+					if (!showCirclesRef.current) return null;
 
-				if (flipped) return Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[y, 0, y, windowSize.height]}/>)((windowSize.width / 2) + (offset * cellHeight)));
+					if (flipped) return Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[y, 0, y, windowSize.height]}/>)((windowSize.width / 2) + (offset * cellHeight)));
 
-				return Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[0, y, windowSize.width, y]}/>)((windowSize.height / 2) + (offset * cellHeight)));
-			})()}
+					return Array.from({length: maxCellLineY * 2 + 1}, (_, index) => index - maxCellLineY).map(offset => (y => <Line stroke="black" strokeWidth={0.3} key={`horizontal-${offset}`} points={[0, y, windowSize.width, y]}/>)((windowSize.height / 2) + (offset * cellHeight)));
+				})()}
 
-			{/* vertical axes */}
-			{(() => {
-				if (!showCirclesRef.current) return null;
+				{/* vertical axes */}
+				{(() => {
+					if (!showCirclesRef.current) return null;
 
-				if (flipped) return Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[0, x - delta, windowSize.width, x + delta]}/>)((windowSize.height / 2) + (offset * cellWidth)));
+					if (flipped) return Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[0, x - delta, windowSize.width, x + delta]}/>)((windowSize.height / 2) + (offset * cellWidth)));
 
-				return Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + delta, 0, x - delta, windowSize.height]}/>)((windowSize.width / 2) + (offset * cellWidth)));
-			})()}
+					return Array.from({length: maxCellLineX * 2 + 1}, (_, index) => index - maxCellLineX).map(offset => (x => <Line stroke="black" strokeWidth={0.3} key={`vertical-${offset}`} points={[x + delta, 0, x - delta, windowSize.height]}/>)((windowSize.width / 2) + (offset * cellWidth)));
+				})()}
 
-			{/* cells */}
-			{showCirclesRef.current ? null : cells.map((points, index) => points ? <Line key={`line-${index}`} points={points} closed fill={getColor(lchs[index % cellArity])} stroke="black"/> : null)}
+				{/* cells */}
+				{showCirclesRef.current ? null : cells.map((points, index) => points ? <Line key={`line-${index}`} points={points} closed fill={getColor(lchs[index % cellArity])} stroke="black"/> : null)}
 
-			{/* symmetry equivalent points of locus */}
-			{showCirclesRef.current ? equivalents.map(([X, Y], index) => <Circle key={`circle-${index}`} x={X} y={Y} radius={10} fill={getColor(lchs[index % cellArity])}/>) : null}
-		</Layer>
-	</Stage>
+				{/* symmetry equivalent points of locus */}
+				{showCirclesRef.current ? equivalents.map(([X, Y], index) => <Circle key={`circle-${index}`} x={X} y={Y} radius={10} fill={getColor(lchs[index % cellArity])}/>) : null}
+			</Layer>
+		</Stage>
+
+		{/* plane group label */}
+		<div className="plane-group-label">{currentPlaneGroup.planeGroup}</div>
+	</>;
 };
