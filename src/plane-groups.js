@@ -32,7 +32,6 @@ export default {
 		],
 		transitions: [{
 			planeGroup: "p2",
-			mappings: [0, 0],
 			getPositions: aspect => (aspect < 1) ? [[0, 0.5], [0.5, 0.5]] : [[0.5, 0], [0.5, 0.5]],
 			getTheta: interpolateAcrossTransition,
 			getAspect: ({value1, value2, progress}) => {
@@ -58,7 +57,6 @@ export default {
 			},
 		}, {
 			planeGroup: "p3",
-			mappings: [0, 0, 0],
 			getPositions: () => [[1/3, 2/3], [2/3, 1/3]],
 			getTheta: interpolateBeforeTransition,
 			getAspect: interpolateBeforeTransition,
@@ -71,7 +69,6 @@ export default {
 		],
 		transitions: [{
 			planeGroup: "p1",
-			mappings: [0],
 			getPositions: aspect => (aspect < 1) ? [[0.25, 0], [0.25, 0.5], [0.75, 0], [0.75, 0.5]] : [[0, 0.25], [0, 0.75], [0.5, 0.25], [0.5, 0.75]],
 			getTheta: interpolateAcrossTransition,
 			getAspect: ({value1, value2, progress}) => {
@@ -97,7 +94,6 @@ export default {
 			},
 		}, {
 			planeGroup: "p6",
-			mappings: [0, 0, 0, 1, 1, 1],
 			getPositions: () => [[1/3, 2/3], [2/3, 1/3]],
 			getTheta: interpolateBeforeTransition,
 			getAspect: interpolateBeforeTransition,
@@ -112,7 +108,6 @@ export default {
 		flipped: true,
 		transitions: [{
 			planeGroup: "p1",
-			mappings: [0],
 			getPositions: () => [[1/3, 0], [2/3, 0], [0, 1/3], [0, 2/3], [1/3, 1/3], [2/3, 2/3]],
 			getTheta: interpolateAfterTransition,
 			getAspect: interpolateAfterTransition,
@@ -130,13 +125,11 @@ export default {
 		flipped: true,
 		transitions: [{
 			planeGroup: "p2",
-			mappings: [0, 4],
 			getPositions: () => [[1/3, 0], [2/3, 0], [0, 1/3], [0, 2/3], [1/3, 1/3], [2/3, 2/3]],
 			getTheta: interpolateAfterTransition,
 			getAspect: interpolateAfterTransition,
 		}, {
 			planeGroup: "p31m",
-			mappings: [0, 1, 2, 5, 4, 3],
 			getPositions: () => [[0.5, 0.25], [0.75, 0.25], [0.75, 0.5], [0.25, 0.5], [0.25, 0.75], [0.5, 0.75]],
 			getTheta: noTransition,
 			getAspect: noTransition,
@@ -154,7 +147,6 @@ export default {
 		flipped: true,
 		transitions: [{
 			planeGroup: "p6",
-			mappings: [0, 1, 2, 5, 4, 3],
 			getPositions: () => [[0.5, 0.25], [0.75, 0.25], [0.75, 0.5], [0.25, 0.5], [0.25, 0.75], [0.5, 0.75]],
 			getTheta: noTransition,
 			getAspect: noTransition,

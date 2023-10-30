@@ -55,10 +55,6 @@ export default ({currentPlaneGroup, previousPlaneGroups}) => {
 	const nextPlaneGroup = leastVisited[Math.floor(Math.random() * leastVisited.length)];
 	nextPlaneGroup.property = getProperty({currentPlaneGroup, nextPlaneGroup});
 	const aspect = getAspect(nextPlaneGroup.planeGroup);
-	const currentMultiplicity = planeGroups[currentPlaneGroup.planeGroup].equivalents.length;
-	const nextMultiplicity = nextPlaneGroup.mappings.length;
-
-	if (currentMultiplicity === nextMultiplicity) nextPlaneGroup.lchs = nextPlaneGroup.mappings.map(index => currentPlaneGroup.lchs[index]);
 
 	const result = {
 		...nextPlaneGroup,

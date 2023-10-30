@@ -1,5 +1,6 @@
 import transformVector from "./transform-vector.js";
 import planeGroups from "./plane-groups.js";
+import rebaseCoordinate from "./rebase-coordinate.js";
 
 const multiplyMatrix = ([a1, b1, c1, d1, e1, f1, g1, h1, i1], [a2, b2, c2, d2, e2, f2, g2, h2, i2]) => {
 	return [
@@ -8,13 +9,6 @@ const multiplyMatrix = ([a1, b1, c1, d1, e1, f1, g1, h1, i1], [a2, b2, c2, d2, e
 		g1*a2 + h1*d2 + i1*g2, g1*b2 + h1*e2 + i1*h2, g1*c2 + h1*f2 + i1*i2,
 	];
 };
-const rebaseCoordinate = coordinate => {
-	while (coordinate < 0) coordinate += 1;
-	while (coordinate > 1) coordinate -= 1;
-
-	return coordinate;
-};
-
 
 export default state => {
 	const {width, height, theta, aspect, flipped, currentPlaneGroup} = state;
@@ -112,6 +106,19 @@ export default state => {
 
 		return points;
 	};
+	const getUnitCellBoundingBox = () => {
+		if (flipped) {
+			const topLeft = transformVector(fromCoordinates)([0, 1]);
+			const bottomRight = transformVector(fromCoordinates)([1, 0]);
+
+			return {xl: topLeft[0], xr: bottomRight[0], yt: topLeft[1], yb: bottomRight[1]};
+		} else {
+			const topRight = transformVector(fromCoordinates)([0, 1]);
+			const bottomLeft = transformVector(fromCoordinates)([1, 0]);
+
+			return {xl: bottomLeft[0], xr: topRight[0], yt: topRight[1], yb: bottomLeft[1]};
+		}
+	};
 
 	return {
 		...state,
@@ -124,5 +131,6 @@ export default state => {
 		fromCoordinates,
 		cellHeight,
 		cellWidth,
+		getUnitCellBoundingBox,
 	};
 };
