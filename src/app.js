@@ -18,7 +18,7 @@ const transitionDuration = slow ? 10000 : 1000; // ms
 const cycleDuration = slow ? 17000 : 7000;
 
 export default () => {
-	const targetRef = useRef({X: window.innerWidth / 2, Y: window.innerHeight / 2});
+	const targetRef = useRef({X: Math.random() * window.innerWidth, Y: Math.random() * window.innerHeight}); // start towards a random point
 	const showCirclesRef = useRef(true);
 	const [{
 		windowSize, // {width: I, height: I}
@@ -223,7 +223,7 @@ export default () => {
 	return <Stage
 		width={windowSize.width}
 		height={windowSize.height}
-		onMouseMove={e => targetRef.current = {X: e.evt.clientX, Y: e.evt.clientY}}
+		onPointerMove={e => targetRef.current = {X: e.evt.clientX, Y: e.evt.clientY}}
 	>
 		<Layer>
 			{/* horizontal axis */}
