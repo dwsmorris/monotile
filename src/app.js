@@ -12,13 +12,17 @@ import getTransitionDetails from "./get-transition-details.js";
 import planeGroups from "./plane-groups.js";
 import rebaseCoordinate from './rebase-coordinate.js';
 import getLchs from "./get-lchs.js";
+import {useDebouncedCallback} from "use-debounce";
 
 const slow = false;
 const transitionDuration = slow ? 10000 : 1000; // ms
 const cycleDuration = slow ? 17000 : 7000;
+const screensaverWait = 3000;
 
 export default () => {
 	const targetRef = useRef({X: Math.random() * window.innerWidth, Y: Math.random() * window.innerHeight}); // start towards a random point
+	const locusVelocity = useRef();
+	const resetScreensaverTimer = useDebouncedCallback(() => locusVelocity.current = [0, 0], screensaverWait);
 	const showCirclesRef = useRef(true);
 	const [{
 		windowSize, // {width: I, height: I}
@@ -141,6 +145,12 @@ export default () => {
 
 					return generateEquivalents({...metrics, showCircles: showCirclesRef.current});
 				} else {
+					// if in screensaver mode, perturb the target
+					if (locusVelocity.current) {
+						locusVelocity.current = locusVelocity.current.map(velocity => velocity + 0.2 * (Math.random() - 0.5) - 0.01 * velocity);
+						targetRef.current = {X: targetRef.current.X + locusVelocity.current[0], Y: targetRef.current.Y + locusVelocity.current[1]};
+					}
+
 					return applyAnimation({state, attractor: targetRef.current, ms, showCircles: showCirclesRef.current});
 				}
 			})();
@@ -150,8 +160,8 @@ export default () => {
 	}, undefined, () => {
 		// const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}]}; // dummy mappings to check cell arity
 		// const currentPlaneGroup = {planeGroup: "p3", theta: getTheta("p3"), aspect: getAspect("p3"), lchs: [{h: -1}, {h : 0}, {h : 1}], flipped: true};
-		// const currentPlaneGroup = {planeGroup: "p6", theta: getTheta("p6"), aspect: getAspect("p6"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true}
-		const currentPlaneGroup = {planeGroup: "p31m", theta: getTheta("p31m"), aspect: getAspect("p31m"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true};
+		const currentPlaneGroup = {planeGroup: "p6", theta: getTheta("p6"), aspect: getAspect("p6"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true}
+		// const currentPlaneGroup = {planeGroup: "p31m", theta: getTheta("p31m"), aspect: getAspect("p31m"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true};
 
 		return generateEquivalents({
 			...getMetrics({
@@ -203,10 +213,13 @@ export default () => {
 
 		window.addEventListener("keydown", handleKeyPress);
 
+		// initialize screensaver timeout
+		resetScreensaverTimer();
+
 		// Clean up the event listener when the component is unmounted
 		return () => {
 			window.removeEventListener('resize', handleResize);
-			window,removeEventListener("keydown", handleKeyPress);
+			window.removeEventListener("keydown", handleKeyPress);
 			clearInterval(transitionInterval);
 		};
 	}, []); // Empty dependency array to ensure this effect only runs once
@@ -224,7 +237,11 @@ export default () => {
 		<Stage
 			width={windowSize.width}
 			height={windowSize.height}
-			onPointerMove={e => targetRef.current = {X: e.evt.clientX, Y: e.evt.clientY}}
+			onPointerMove={e => {
+				targetRef.current = {X: e.evt.clientX, Y: e.evt.clientY};
+				locusVelocity.current = undefined;
+				resetScreensaverTimer();
+			}}
 		>
 			<Layer>
 				{/* horizontal axis */}
