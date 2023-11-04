@@ -87,21 +87,26 @@ export default state => {
 		})();
 		const [x, y] = transformVector(toCoordinates)([X, Y]).map(rebaseCoordinate);
 		const symmetryEquivalents = planeGroups[planeGroup].equivalents.map(transform => transformVector(transform)([x, y]).map(rebaseCoordinate));
-		const equivalentPoints = [0, -1, 1, -2, 2].flatMap(yOffset => [0, -1, 1, -2, 2].flatMap( // to avoid artifacts check 2 cells on every side
+		const surroundingPoints = [0, -1, 1, -2, 2].flatMap(yOffset => [0, -1, 1, -2, 2].flatMap( // to avoid artifacts check 2 cells on every side
 			xOffset => symmetryEquivalents.map(([x, y]) => [x + xOffset, y + yOffset])
-		)).map(transformVector(fromCoordinates)).map(([x, y]) => ({x, y}));
-		const cellDetails = new Voronoi().compute(equivalentPoints, bbox).cells;
-		const cells = equivalentPoints.slice(0, symmetryEquivalents.length).map(({voronoiId}) => {
-			const details = cellDetails[voronoiId];
+		)).map(transformVector(fromCoordinates));
 
-			if (!details) return undefined;
+		const delaunay = d3.Delaunay.from(surroundingPoints);
+		const d3bb = [bbox.xl, bbox.yt, bbox.xr, bbox.yb];
+		const voronoi = delaunay.voronoi(d3bb);
+		const d3CellDetails = [...voronoi.cellPolygons()];
+		const d3Cells = [...Array(symmetryEquivalents.length).keys()].map(id => {
+			const details = d3CellDetails.find(({index}) => id === index);
 
-			const {halfedges} = details;
+			if (!details) {
+				console.log("not found");
+			}
 
-			return halfedges && (halfedges.length > 2) && halfedges.map(halfedge => (({x, y}) => [x, y])(halfedge.getEndpoint()));
+			return details;
 		});
+
 		const points = Array.from({length: maxCellLineX * 2 + 4}, (_, index) => index - maxCellLineX - 2).flatMap(yOffset => Array.from({length: maxCellLineY * 2 + 4}, (_, index) => index - maxCellLineY - 2).flatMap(
-			xOffset => cells.map(vertices => vertices && vertices.flatMap(([x, y]) => [x + (xOffset * xVector[0]) + (yOffset * yVector[0]), y + (xOffset * xVector[1]) + (yOffset * yVector[1])]))
+			xOffset => d3Cells.map(vertices => vertices && vertices.flatMap(([x, y]) => [x + (xOffset * xVector[0]) + (yOffset * yVector[0]), y + (xOffset * xVector[1]) + (yOffset * yVector[1])]))
 		));
 
 		return points;
