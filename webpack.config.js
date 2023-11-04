@@ -2,6 +2,7 @@ const path = require('path');
 
 module.exports = {
 	mode: 'development', // Set the build mode to 'development'
+	devtool: "source-map",
 	entry: './src/index.js',
 	output: {
 		path: path.resolve(__dirname, 'dist'),
