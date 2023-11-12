@@ -13,6 +13,7 @@ import planeGroups from "./plane-groups.js";
 import rebaseCoordinate from './rebase-coordinate.js';
 import getLchs from "./get-lchs.js";
 import {useDebouncedCallback} from "use-debounce";
+import getAngleBetweenPoints from "./get-angle-between-points.js";
 
 const slow = false;
 const transitionDuration = slow ? 10000 : 1000; // ms
@@ -23,7 +24,7 @@ export default () => {
 	const targetRef = useRef({X: Math.random() * window.innerWidth, Y: Math.random() * window.innerHeight}); // start towards a random point
 	const locusVelocity = useRef();
 	const resetScreensaverTimer = useDebouncedCallback(() => locusVelocity.current = [0, 0], screensaverWait);
-	const showCirclesRef = useRef(true);
+	const showCirclesRef = useRef(false);
 	const [{
 		windowSize, // {width: I, height: I}
 		maxCellLineX, // I
@@ -47,7 +48,7 @@ export default () => {
 	}, dispatch] = useReducer((state, action) => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...getMetrics({...state, ...action.payload}), showCircles: showCirclesRef.current});
-			case "CALCULATE_TRANSITION": return (() => {
+			case "CALCULATE_TRANSITION": {
 				const {X, Y} = state.locus;
 				const [x, y] = transformVector(state.toCoordinates)([X, Y]);
 				const cell = [Math.floor(x), Math.floor(y)];
@@ -82,21 +83,37 @@ export default () => {
 				const mappings = symmetryEquivalents.map(([X, Y]) => {
 					const equivalent = pointsInNewCell.find(({position}) => (Math.abs(position[0] - X) < 1) && (Math.abs(position[1] - Y) < 1));
 
-					if (!equivalent) {
-						var i =0;
-					}
-
 					return equivalent.mapping;
 				});
+				// mirror configuration detection
+				const {activeMirrors, mirrorConfiguration} = (() => {
+					const mirrors = state.nextPlaneGroup.mirrors;
+
+					if (!mirrors) return {};
+
+					const stateAtEnd = getMetrics({
+						...state,
+						...getTransitionDetails({planeGroup1: state.currentPlaneGroup, planeGroup2: state.nextPlaneGroup, progress: 1}), // theta and aspect
+						currentPlaneGroup: state.nextPlaneGroup,
+						flipped: state.nextPlaneGroup.flipped,
+					});
+
+					const activeMirrors = mirrors.map(points => points.map(([x, y]) => transformVector(stateAtEnd.fromCoordinates)([x + cell[0], y + cell[1]])));
+					const mirrorConfiguration = activeMirrors.map(getAngleBetweenPoints([X, Y]));
+
+					return {activeMirrors, mirrorConfiguration};
+				})();
 				const nextPlaneGroup = {
 					...state.nextPlaneGroup,
 					mappings,
+					activeMirrors,
+					mirrorConfiguration,
 					...((currentMultiplicity === mappings.length) ? {lchs: mappings.map(index => state.currentPlaneGroup.lchs[index])} : {}),
 				};
 
 				return {...state, transitionPoint, transitionStart: {ms: Date.now(), locus: state.locus}, nextPlaneGroup};
-			})();
-			case "ANIMATE": return (() => {
+			}
+			case "ANIMATE": {
 				const ms = Date.now();
 
 				if (state.transitionStart) {
@@ -125,6 +142,8 @@ export default () => {
 							previousPlaneGroup: state.currentPlaneGroup,
 							currentPlaneGroup: state.nextPlaneGroup,
 							flipped: state.nextPlaneGroup.flipped,
+							mirrors: state.nextPlaneGroup.mirrors,
+							mirrorConfiguration: state.nextPlaneGroup.mirrorConfiguration,
 							nextPlaneGroup: undefined,
 						} : {}),
 						...((progress === 1) ? (() => {
@@ -146,21 +165,36 @@ export default () => {
 					return generateEquivalents({...metrics, showCircles: showCirclesRef.current});
 				} else {
 					// if in screensaver mode, perturb the target
-					if (locusVelocity.current) {
-						locusVelocity.current = locusVelocity.current.map(velocity => velocity + 0.2 * (Math.random() - 0.5) - 0.01 * velocity);
-						targetRef.current = {X: targetRef.current.X + locusVelocity.current[0], Y: targetRef.current.Y + locusVelocity.current[1]};
-					}
+					if (locusVelocity.current) (() => {
+						const newVelocity = locusVelocity.current.map(velocity => velocity + 0.2 * (Math.random() - 0.5) - 0.01 * velocity);
+						const newTarget = {X: targetRef.current.X + locusVelocity.current[0], Y: targetRef.current.Y + locusVelocity.current[1]};
+
+						// if there are mirrors in operation, check if we've crossed a mirror - and if so, clear screensaver velocity and don't apply it
+						const {activeMirrors, mirrorConfiguration} = state.currentPlaneGroup;
+
+						if (activeMirrors) {
+							const newMirrorConfiguration = activeMirrors.map(getAngleBetweenPoints([newTarget.X, newTarget.Y]));
+
+							if (!mirrorConfiguration.every((config, index) => config === newMirrorConfiguration[index])) {
+								locusVelocity.current = [0, 0];
+								return;
+							}
+						}
+
+						locusVelocity.current = newVelocity;
+						targetRef.current = newTarget;
+					})();
 
 					return applyAnimation({state, attractor: targetRef.current, ms, showCircles: showCirclesRef.current});
 				}
-			})();
+			}
 		}
 
 		return state;
 	}, undefined, () => {
-		// const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}]}; // dummy mappings to check cell arity
+		const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}]}; // dummy mappings to check cell arity
 		// const currentPlaneGroup = {planeGroup: "p3", theta: getTheta("p3"), aspect: getAspect("p3"), lchs: [{h: -1}, {h : 0}, {h : 1}], flipped: true};
-		const currentPlaneGroup = {planeGroup: "p6", theta: getTheta("p6"), aspect: getAspect("p6"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true}
+		// const currentPlaneGroup = {planeGroup: "p6", theta: getTheta("p6"), aspect: getAspect("p6"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true}
 		// const currentPlaneGroup = {planeGroup: "p31m", theta: getTheta("p31m"), aspect: getAspect("p31m"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true};
 
 		return generateEquivalents({

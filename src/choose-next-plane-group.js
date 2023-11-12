@@ -55,13 +55,15 @@ export default ({currentPlaneGroup, previousPlaneGroups}) => {
 	const nextPlaneGroup = leastVisited[Math.floor(Math.random() * leastVisited.length)];
 	nextPlaneGroup.property = getProperty({currentPlaneGroup, nextPlaneGroup});
 	const aspect = getAspect(nextPlaneGroup.planeGroup);
+	const {flipped, mirrors} = planeGroups[nextPlaneGroup.planeGroup];
 
 	const result = {
 		...nextPlaneGroup,
 		theta: getTheta(nextPlaneGroup.planeGroup),
 		aspect,
 		positions: generateAllPositions(nextPlaneGroup.getPositions(aspect)),
-		flipped: planeGroups[nextPlaneGroup.planeGroup].flipped,
+		flipped,
+		mirrors,
 	};
 
 	return result;
