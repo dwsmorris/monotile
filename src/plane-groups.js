@@ -1,6 +1,6 @@
 
 const interpolate = ({value1, value2, proportion}) => {
-	const linear = Math.sqrt(proportion);
+	const linear = /*Math.sqrt(*/proportion/*)*/;
 
 	return (linear * value2) + ((1 - linear) * value1);
 };
