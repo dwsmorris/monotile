@@ -27,7 +27,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _plane_groups_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./plane-groups.js */ "./src/plane-groups.js");
 /* harmony import */ var _rebase_coordinate_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./rebase-coordinate.js */ "./src/rebase-coordinate.js");
 /* harmony import */ var _get_lchs_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./get-lchs.js */ "./src/get-lchs.js");
-/* harmony import */ var use_debounce__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! use-debounce */ "./node_modules/use-debounce/dist/index.module.js");
+/* harmony import */ var use_debounce__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! use-debounce */ "./node_modules/use-debounce/dist/index.module.js");
+/* harmony import */ var _get_angle_between_points_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./get-angle-between-points.js */ "./src/get-angle-between-points.js");
+
 
 
 
@@ -53,8 +55,8 @@ const screensaverWait = 3000;
     Y: Math.random() * window.innerHeight
   }); // start towards a random point
   const locusVelocity = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)();
-  const resetScreensaverTimer = (0,use_debounce__WEBPACK_IMPORTED_MODULE_14__.useDebouncedCallback)(() => locusVelocity.current = [0, 0], screensaverWait);
-  const showCirclesRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(true);
+  const resetScreensaverTimer = (0,use_debounce__WEBPACK_IMPORTED_MODULE_15__.useDebouncedCallback)(() => locusVelocity.current = [0, 0], screensaverWait);
+  const showCirclesRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(false);
   const [{
     windowSize,
     // {width: I, height: I}
@@ -103,7 +105,7 @@ const screensaverWait = 3000;
           showCircles: showCirclesRef.current
         });
       case "CALCULATE_TRANSITION":
-        return (() => {
+        {
           const {
             X,
             Y
@@ -170,14 +172,38 @@ const screensaverWait = 3000;
             const equivalent = pointsInNewCell.find(({
               position
             }) => Math.abs(position[0] - X) < 1 && Math.abs(position[1] - Y) < 1);
-            if (!equivalent) {
-              var i = 0;
-            }
             return equivalent.mapping;
           });
+          // mirror configuration detection
+          const {
+            activeMirrors,
+            mirrorConfiguration
+          } = (() => {
+            const mirrors = state.nextPlaneGroup.mirrors;
+            if (!mirrors) return {};
+            const stateAtEnd = (0,_get_metrics_js__WEBPACK_IMPORTED_MODULE_3__["default"])({
+              ...state,
+              ...(0,_get_transition_details_js__WEBPACK_IMPORTED_MODULE_10__["default"])({
+                planeGroup1: state.currentPlaneGroup,
+                planeGroup2: state.nextPlaneGroup,
+                progress: 1
+              }),
+              // theta and aspect
+              currentPlaneGroup: state.nextPlaneGroup,
+              flipped: state.nextPlaneGroup.flipped
+            });
+            const activeMirrors = mirrors.map(points => points.map(([x, y]) => (0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_4__["default"])(stateAtEnd.fromCoordinates)([x + cell[0], y + cell[1]])));
+            const mirrorConfiguration = activeMirrors.map((0,_get_angle_between_points_js__WEBPACK_IMPORTED_MODULE_14__["default"])([X, Y]));
+            return {
+              activeMirrors,
+              mirrorConfiguration
+            };
+          })();
           const nextPlaneGroup = {
             ...state.nextPlaneGroup,
             mappings,
+            activeMirrors,
+            mirrorConfiguration,
             ...(currentMultiplicity === mappings.length ? {
               lchs: mappings.map(index => state.currentPlaneGroup.lchs[index])
             } : {})
@@ -191,9 +217,9 @@ const screensaverWait = 3000;
             },
             nextPlaneGroup
           };
-        })();
+        }
       case "ANIMATE":
-        return (() => {
+        {
           const ms = Date.now();
           if (state.transitionStart) {
             const offset = ms - state.transitionStart.ms;
@@ -229,6 +255,8 @@ const screensaverWait = 3000;
                 previousPlaneGroup: state.currentPlaneGroup,
                 currentPlaneGroup: state.nextPlaneGroup,
                 flipped: state.nextPlaneGroup.flipped,
+                mirrors: state.nextPlaneGroup.mirrors,
+                mirrorConfiguration: state.nextPlaneGroup.mirrorConfiguration,
                 nextPlaneGroup: undefined
               } : {}),
               ...(progress === 1 ? (() => {
@@ -254,13 +282,28 @@ const screensaverWait = 3000;
             });
           } else {
             // if in screensaver mode, perturb the target
-            if (locusVelocity.current) {
-              locusVelocity.current = locusVelocity.current.map(velocity => velocity + 0.2 * (Math.random() - 0.5) - 0.01 * velocity);
-              targetRef.current = {
+            if (locusVelocity.current) (() => {
+              const newVelocity = locusVelocity.current.map(velocity => velocity + 0.2 * (Math.random() - 0.5) - 0.01 * velocity);
+              const newTarget = {
                 X: targetRef.current.X + locusVelocity.current[0],
                 Y: targetRef.current.Y + locusVelocity.current[1]
               };
-            }
+
+              // if there are mirrors in operation, check if we've crossed a mirror - and if so, clear screensaver velocity and don't apply it
+              const {
+                activeMirrors,
+                mirrorConfiguration
+              } = state.currentPlaneGroup;
+              if (activeMirrors) {
+                const newMirrorConfiguration = activeMirrors.map((0,_get_angle_between_points_js__WEBPACK_IMPORTED_MODULE_14__["default"])([newTarget.X, newTarget.Y]));
+                if (!mirrorConfiguration.every((config, index) => config === newMirrorConfiguration[index])) {
+                  locusVelocity.current = [0, 0];
+                  return;
+                }
+              }
+              locusVelocity.current = newVelocity;
+              targetRef.current = newTarget;
+            })();
             return (0,_apply_animation_js__WEBPACK_IMPORTED_MODULE_9__["default"])({
               state,
               attractor: targetRef.current,
@@ -268,37 +311,18 @@ const screensaverWait = 3000;
               showCircles: showCirclesRef.current
             });
           }
-        })();
+        }
     }
     return state;
   }, undefined, () => {
-    // const currentPlaneGroup = {planeGroup: "p1", theta: getTheta("p1"), aspect: getAspect("p1"), lchs: [{}]}; // dummy mappings to check cell arity
-    // const currentPlaneGroup = {planeGroup: "p3", theta: getTheta("p3"), aspect: getAspect("p3"), lchs: [{h: -1}, {h : 0}, {h : 1}], flipped: true};
     const currentPlaneGroup = {
-      planeGroup: "p6",
-      theta: (0,_get_theta_js__WEBPACK_IMPORTED_MODULE_7__["default"])("p6"),
-      aspect: (0,_get_aspect_js__WEBPACK_IMPORTED_MODULE_8__["default"])("p6"),
-      lchs: [{
-        l: -1,
-        h: -1
-      }, {
-        l: -1,
-        h: 0
-      }, {
-        l: -1,
-        h: 1
-      }, {
-        l: 1,
-        h: -1
-      }, {
-        l: 1,
-        h: 0
-      }, {
-        l: 1,
-        h: 1
-      }],
-      flipped: true
-    };
+      planeGroup: "p1",
+      theta: (0,_get_theta_js__WEBPACK_IMPORTED_MODULE_7__["default"])("p1"),
+      aspect: (0,_get_aspect_js__WEBPACK_IMPORTED_MODULE_8__["default"])("p1"),
+      lchs: [{}]
+    }; // dummy mappings to check cell arity
+    // const currentPlaneGroup = {planeGroup: "p3", theta: getTheta("p3"), aspect: getAspect("p3"), lchs: [{h: -1}, {h : 0}, {h : 1}], flipped: true};
+    // const currentPlaneGroup = {planeGroup: "p6", theta: getTheta("p6"), aspect: getAspect("p6"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true}
     // const currentPlaneGroup = {planeGroup: "p31m", theta: getTheta("p31m"), aspect: getAspect("p31m"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true};
 
     return (0,_generate_equivalents_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
@@ -557,12 +581,17 @@ const generateAllPositions = positions => positions.flatMap(([x, y]) => [[x, y],
     nextPlaneGroup
   });
   const aspect = (0,_get_aspect_js__WEBPACK_IMPORTED_MODULE_2__["default"])(nextPlaneGroup.planeGroup);
+  const {
+    flipped,
+    mirrors
+  } = _plane_groups_js__WEBPACK_IMPORTED_MODULE_0__["default"][nextPlaneGroup.planeGroup];
   const result = {
     ...nextPlaneGroup,
     theta: (0,_get_theta_js__WEBPACK_IMPORTED_MODULE_1__["default"])(nextPlaneGroup.planeGroup),
     aspect,
     positions: generateAllPositions(nextPlaneGroup.getPositions(aspect)),
-    flipped: _plane_groups_js__WEBPACK_IMPORTED_MODULE_0__["default"][nextPlaneGroup.planeGroup].flipped
+    flipped,
+    mirrors
   };
   return result;
 });
@@ -602,6 +631,37 @@ __webpack_require__.r(__webpack_exports__);
     equivalents,
     cells
   };
+});
+
+/***/ }),
+
+/***/ "./src/get-angle-between-points.js":
+/*!*****************************************!*\
+  !*** ./src/get-angle-between-points.js ***!
+  \*****************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (point3 => ([point1, point2]) => {
+  // Calculate vectors
+  const vector1 = [point1[0] - point2[0], point1[1] - point2[1]];
+  const vector2 = [point3[0] - point2[0], point3[1] - point2[1]];
+
+  // Calculate dot product
+  const dotProduct = vector1[0] * vector2[0] + vector1[1] * vector2[1];
+
+  // Calculate cross product
+  const crossProduct = vector1[0] * vector2[1] - vector1[1] * vector2[0];
+
+  // Calculate angle in radians
+  let angleInRadians = Math.atan2(crossProduct, dotProduct);
+
+  // Convert the angle to degrees
+  const angleInDegrees = angleInRadians * (180 / Math.PI);
+  return angleInDegrees > 0;
 });
 
 /***/ }),
@@ -1205,6 +1265,7 @@ const noTransition = ({
   },
   p31m: {
     equivalents: [[1, 0, 0, 0, 1, 0, 0, 0, 1], [0, -1, 0, 1, -1, 0, 0, 0, 1], [-1, 1, 0, -1, 0, 0, 0, 0, 1], [0, 1, 0, 1, 0, 0, 0, 0, 1], [1, -1, 0, 0, -1, 0, 0, 0, 1], [-1, 0, 0, -1, 1, 0, 0, 0, 1]],
+    mirrors: [[[1, 0], [0, 0]], [[1, 0], [1, 1]], [[0, 1], [0, 0]], [[0, 1], [1, 1]], [[1, 1], [0, 0]]],
     flipped: true,
     transitions: [{
       planeGroup: "p6",
