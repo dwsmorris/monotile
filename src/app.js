@@ -1,30 +1,24 @@
-import React, {useReducer, useEffect, useRef, useState} from 'react';
+import React, {useReducer, useEffect, useRef} from 'react';
 import {Stage, Layer, Circle, Line} from "react-konva";
 import getColor from "./get-color.js";
 import getMetrics from './get-metrics.js';
-import transformVector from './transform-vector.js';
 import generateEquivalents from './generate-equivalents.js';
 import chooseNextPlaneGroup from './choose-next-plane-group.js';
 import getTheta from './get-theta.js';
 import getAspect from "./get-aspect.js";
-import applyAnimation from './apply-animation.js';
-import getTransitionDetails from "./get-transition-details.js";
 import planeGroups from "./plane-groups.js";
-import rebaseCoordinate from './rebase-coordinate.js';
-import getLchs from "./get-lchs.js";
 import {useDebouncedCallback} from "use-debounce";
-import getAngleBetweenPoints from "./get-angle-between-points.js";
 import calculateTransition from "./calculate-transition.js";
+import animate from "./animate.js";
 
-const slow = false;
-const transitionDuration = slow ? 10000 : 1000; // ms
-const cycleDuration = slow ? 17000 : 7000;
 const screensaverWait = 3000;
+const cycleDuration = 7000;
 
+// eslint-disable-next-line react/display-name
 export default () => {
 	const targetRef = useRef({X: Math.random() * window.innerWidth, Y: Math.random() * window.innerHeight}); // start towards a random point
-	const locusVelocity = useRef();
-	const resetScreensaverTimer = useDebouncedCallback(() => locusVelocity.current = [0, 0], screensaverWait);
+	const locusVelocityRef = useRef();
+	const resetScreensaverTimer = useDebouncedCallback(() => locusVelocityRef.current = [0, 0], screensaverWait);
 	const showCirclesRef = useRef(false);
 	const [{
 		windowSize, // {width: I, height: I}
@@ -37,7 +31,7 @@ export default () => {
 		previousPlaneGroups, // {[planeGroup]: I}
 		nextPlaneGroup, // {planeGroup: S, positions: [[R, R]], theta: R}
 		theta, // R
-		aspect, // srt(0.5-2)
+		aspect, // sqrt(0.5-2)
 		transitionPoint, // {X: R, Y: R}?
 		lastLocusUpdate, // I
 		transitionStart, // {ms: I, locus: {X: I, Y: I}}?
@@ -50,81 +44,7 @@ export default () => {
 		switch (action.type) {
 			case "WINDOW_SIZE": return generateEquivalents({...getMetrics({...state, ...action.payload}), showCircles: showCirclesRef.current});
 			case "CALCULATE_TRANSITION": return calculateTransition(state);
-			case "ANIMATE": {
-				const ms = Date.now();
-
-				if (state.transitionStart) {
-					const offset = ms - state.transitionStart.ms;
-					const progress = Math.min((offset / transitionDuration) * 2 - 1, 1);
-					const magProgress = Math.abs(progress);
-					const locus = {
-						X: (state.transitionStart.locus.X * magProgress) + (state.transitionPoint[0] * (1 - magProgress)),
-						Y: (state.transitionStart.locus.Y * magProgress) + (state.transitionPoint[1] * (1 - magProgress)),
-					};
-					const planeGroup1 = state.previousPlaneGroup || state.currentPlaneGroup;
-					const planeGroup2 = state.nextPlaneGroup || state.currentPlaneGroup;
-					const transitionDetails = getTransitionDetails({planeGroup1,  planeGroup2, progress});
-					const lchs = getLchs({planeGroup1, planeGroup2, progress});
-					const updatedState = {
-						...state,
-						locus,
-						lastLocusUpdate: ms,
-						...transitionDetails,
-						lchs,
-						...(((progress > 0) && !state.previousPlaneGroup) ? {
-							previousPlaneGroups: {
-								...state.previousPlaneGroups,
-								[state.currentPlaneGroup.planeGroup]: (state.previousPlaneGroups[state.currentPlaneGroup.planeGroup] || 0) + 1,
-							},
-							previousPlaneGroup: state.currentPlaneGroup,
-							currentPlaneGroup: state.nextPlaneGroup,
-							flipped: state.nextPlaneGroup.flipped,
-							mirrors: state.nextPlaneGroup.mirrors,
-							mirrorConfiguration: state.nextPlaneGroup.mirrorConfiguration,
-							nextPlaneGroup: undefined,
-						} : {}),
-						...((progress === 1) ? (() => {
-							const currentPlaneGroup = {
-								...state.currentPlaneGroup,
-								lchs,
-							};
-
-							return {
-								transitionStart: undefined,
-								previousPlaneGroup: undefined,
-								nextPlaneGroup: chooseNextPlaneGroup({currentPlaneGroup, previousPlaneGroups: state.previousPlaneGroups}),
-								currentPlaneGroup,
-							};
-						})() : {}),
-					};
-					const metrics = getMetrics(updatedState);
-
-					return generateEquivalents({...metrics, showCircles: showCirclesRef.current});
-				} else {
-					// if in screensaver mode, perturb the target
-					if (locusVelocity.current) (() => {
-						const newVelocity = locusVelocity.current.map(velocity => velocity + 0.2 * (Math.random() - 0.5) - 0.01 * velocity);
-						const newTarget = {X: targetRef.current.X + locusVelocity.current[0], Y: targetRef.current.Y + locusVelocity.current[1]};
-
-						// if there are mirrors in operation, check if we've crossed a mirror - and if so, clear screensaver velocity and don't apply it
-						const {activeMirrors, mirrorConfiguration} = state.currentPlaneGroup;
-
-						if (activeMirrors) {
-							const newMirrorConfiguration = activeMirrors.map(getAngleBetweenPoints([newTarget.X, newTarget.Y]));
-
-							if (!mirrorConfiguration.every((config, index) => config === newMirrorConfiguration[index])) {
-								locusVelocity.current = [0, 0];
-								return;
-							}
-						}
-
-						locusVelocity.current = newVelocity;
-						targetRef.current = newTarget;
-					})();
-
-					return applyAnimation({state, attractor: targetRef.current, ms, showCircles: showCirclesRef.current});
-				}
-			}
+			case "ANIMATE": return animate({state, showCirclesRef, locusVelocityRef, targetRef});
 		}
 
 		return state;
@@ -180,7 +100,7 @@ export default () => {
 		const transitionInterval = setInterval(() => dispatch({type: "CALCULATE_TRANSITION"}), cycleDuration); // 7sec transition period
 
 		// keypress toggle of view
-		const handleKeyPress = e => showCirclesRef.current = !showCirclesRef.current;
+		const handleKeyPress = () => showCirclesRef.current = !showCirclesRef.current;
 
 		window.addEventListener("keydown", handleKeyPress);
 
@@ -210,7 +130,7 @@ export default () => {
 			height={windowSize.height}
 			onPointerMove={e => {
 				targetRef.current = {X: e.evt.clientX, Y: e.evt.clientY};
-				locusVelocity.current = undefined;
+				locusVelocityRef.current = undefined;
 				resetScreensaverTimer();
 			}}
 		>
