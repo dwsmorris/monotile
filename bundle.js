@@ -2,6 +2,134 @@
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
+/***/ "./src/animate.js":
+/*!************************!*\
+  !*** ./src/animate.js ***!
+  \************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _get_transition_details_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./get-transition-details.js */ "./src/get-transition-details.js");
+/* harmony import */ var _get_lchs_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./get-lchs.js */ "./src/get-lchs.js");
+/* harmony import */ var _choose_next_plane_group_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./choose-next-plane-group.js */ "./src/choose-next-plane-group.js");
+/* harmony import */ var _get_metrics_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./get-metrics.js */ "./src/get-metrics.js");
+/* harmony import */ var _generate_equivalents_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./generate-equivalents.js */ "./src/generate-equivalents.js");
+/* harmony import */ var _get_angle_between_points_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./get-angle-between-points.js */ "./src/get-angle-between-points.js");
+/* harmony import */ var _apply_animation_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./apply-animation.js */ "./src/apply-animation.js");
+
+
+
+
+
+
+
+const slow = false;
+const transitionDuration = slow ? 10000 : 1000; // ms
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (({
+  state,
+  showCirclesRef,
+  locusVelocityRef,
+  targetRef
+}) => {
+  const ms = Date.now();
+  if (state.transitionStart) {
+    const offset = ms - state.transitionStart.ms;
+    const progress = Math.min(offset / transitionDuration * 2 - 1, 1);
+    const magProgress = Math.abs(progress);
+    const locus = {
+      X: state.transitionStart.locus.X * magProgress + state.transitionPoint[0] * (1 - magProgress),
+      Y: state.transitionStart.locus.Y * magProgress + state.transitionPoint[1] * (1 - magProgress)
+    };
+    const planeGroup1 = state.previousPlaneGroup || state.currentPlaneGroup;
+    const planeGroup2 = state.nextPlaneGroup || state.currentPlaneGroup;
+    const transitionDetails = (0,_get_transition_details_js__WEBPACK_IMPORTED_MODULE_0__["default"])({
+      planeGroup1,
+      planeGroup2,
+      progress
+    });
+    const lchs = (0,_get_lchs_js__WEBPACK_IMPORTED_MODULE_1__["default"])({
+      planeGroup1,
+      planeGroup2,
+      progress
+    });
+    const updatedState = {
+      ...state,
+      locus,
+      lastLocusUpdate: ms,
+      ...transitionDetails,
+      lchs,
+      ...(progress > 0 && !state.previousPlaneGroup ? {
+        previousPlaneGroups: {
+          ...state.previousPlaneGroups,
+          [state.currentPlaneGroup.planeGroup]: (state.previousPlaneGroups[state.currentPlaneGroup.planeGroup] || 0) + 1
+        },
+        previousPlaneGroup: state.currentPlaneGroup,
+        currentPlaneGroup: state.nextPlaneGroup,
+        flipped: state.nextPlaneGroup.flipped,
+        mirrors: state.nextPlaneGroup.mirrors,
+        mirrorConfiguration: state.nextPlaneGroup.mirrorConfiguration,
+        nextPlaneGroup: undefined
+      } : {}),
+      ...(progress === 1 ? (() => {
+        const currentPlaneGroup = {
+          ...state.currentPlaneGroup,
+          lchs
+        };
+        return {
+          transitionStart: undefined,
+          previousPlaneGroup: undefined,
+          nextPlaneGroup: (0,_choose_next_plane_group_js__WEBPACK_IMPORTED_MODULE_2__["default"])({
+            currentPlaneGroup,
+            previousPlaneGroups: state.previousPlaneGroups
+          }),
+          currentPlaneGroup
+        };
+      })() : {})
+    };
+    const metrics = (0,_get_metrics_js__WEBPACK_IMPORTED_MODULE_3__["default"])(updatedState);
+    return (0,_generate_equivalents_js__WEBPACK_IMPORTED_MODULE_4__["default"])({
+      ...metrics,
+      showCircles: showCirclesRef.current
+    });
+  } else {
+    // if in screensaver mode, perturb the target
+    if (locusVelocityRef.current) (() => {
+      const newVelocity = locusVelocityRef.current.map(velocity => velocity + 0.2 * (Math.random() - 0.5) - 0.01 * velocity);
+      const newTarget = {
+        X: targetRef.current.X + locusVelocityRef.current[0],
+        Y: targetRef.current.Y + locusVelocityRef.current[1]
+      };
+
+      // if there are mirrors in operation, check if we've crossed a mirror - and if so, clear screensaver velocity and don't apply it
+      const {
+        activeMirrors,
+        mirrorConfiguration
+      } = state.currentPlaneGroup;
+      if (activeMirrors) {
+        const newMirrorConfiguration = activeMirrors.map((0,_get_angle_between_points_js__WEBPACK_IMPORTED_MODULE_5__["default"])([newTarget.X, newTarget.Y]));
+        if (!mirrorConfiguration.every((config, index) => config === newMirrorConfiguration[index])) {
+          locusVelocityRef.current = [0, 0];
+          return;
+        }
+      }
+      locusVelocityRef.current = newVelocity;
+      targetRef.current = newTarget;
+    })();
+    return (0,_apply_animation_js__WEBPACK_IMPORTED_MODULE_6__["default"])({
+      state,
+      attractor: targetRef.current,
+      ms,
+      showCircles: showCirclesRef.current
+    });
+  }
+});
+
+/***/ }),
+
 /***/ "./src/app.js":
 /*!********************!*\
   !*** ./src/app.js ***!
@@ -17,18 +145,14 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react_konva__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react-konva */ "./node_modules/react-konva/es/ReactKonva.js");
 /* harmony import */ var _get_color_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./get-color.js */ "./src/get-color.js");
 /* harmony import */ var _get_metrics_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./get-metrics.js */ "./src/get-metrics.js");
-/* harmony import */ var _transform_vector_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./transform-vector.js */ "./src/transform-vector.js");
-/* harmony import */ var _generate_equivalents_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./generate-equivalents.js */ "./src/generate-equivalents.js");
-/* harmony import */ var _choose_next_plane_group_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./choose-next-plane-group.js */ "./src/choose-next-plane-group.js");
-/* harmony import */ var _get_theta_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./get-theta.js */ "./src/get-theta.js");
-/* harmony import */ var _get_aspect_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./get-aspect.js */ "./src/get-aspect.js");
-/* harmony import */ var _apply_animation_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./apply-animation.js */ "./src/apply-animation.js");
-/* harmony import */ var _get_transition_details_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./get-transition-details.js */ "./src/get-transition-details.js");
-/* harmony import */ var _plane_groups_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./plane-groups.js */ "./src/plane-groups.js");
-/* harmony import */ var _rebase_coordinate_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./rebase-coordinate.js */ "./src/rebase-coordinate.js");
-/* harmony import */ var _get_lchs_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./get-lchs.js */ "./src/get-lchs.js");
-/* harmony import */ var use_debounce__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! use-debounce */ "./node_modules/use-debounce/dist/index.module.js");
-/* harmony import */ var _get_angle_between_points_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./get-angle-between-points.js */ "./src/get-angle-between-points.js");
+/* harmony import */ var _generate_equivalents_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./generate-equivalents.js */ "./src/generate-equivalents.js");
+/* harmony import */ var _choose_next_plane_group_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./choose-next-plane-group.js */ "./src/choose-next-plane-group.js");
+/* harmony import */ var _get_theta_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./get-theta.js */ "./src/get-theta.js");
+/* harmony import */ var _get_aspect_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./get-aspect.js */ "./src/get-aspect.js");
+/* harmony import */ var _plane_groups_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./plane-groups.js */ "./src/plane-groups.js");
+/* harmony import */ var use_debounce__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! use-debounce */ "./node_modules/use-debounce/dist/index.module.js");
+/* harmony import */ var _calculate_transition_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./calculate-transition.js */ "./src/calculate-transition.js");
+/* harmony import */ var _animate_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./animate.js */ "./src/animate.js");
 
 
 
@@ -41,21 +165,17 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-
-
-
-
-const slow = false;
-const transitionDuration = slow ? 10000 : 1000; // ms
-const cycleDuration = slow ? 17000 : 7000;
 const screensaverWait = 3000;
+const cycleDuration = 7000;
+
+// eslint-disable-next-line react/display-name
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (() => {
   const targetRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)({
     X: Math.random() * window.innerWidth,
     Y: Math.random() * window.innerHeight
   }); // start towards a random point
-  const locusVelocity = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)();
-  const resetScreensaverTimer = (0,use_debounce__WEBPACK_IMPORTED_MODULE_15__.useDebouncedCallback)(() => locusVelocity.current = [0, 0], screensaverWait);
+  const locusVelocityRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)();
+  const resetScreensaverTimer = (0,use_debounce__WEBPACK_IMPORTED_MODULE_11__.useDebouncedCallback)(() => locusVelocityRef.current = [0, 0], screensaverWait);
   const showCirclesRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(false);
   const [{
     windowSize,
@@ -79,7 +199,7 @@ const screensaverWait = 3000;
     theta,
     // R
     aspect,
-    // srt(0.5-2)
+    // sqrt(0.5-2)
     transitionPoint,
     // {X: R, Y: R}?
     lastLocusUpdate,
@@ -97,7 +217,7 @@ const screensaverWait = 3000;
   }, dispatch] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useReducer)((state, action) => {
     switch (action.type) {
       case "WINDOW_SIZE":
-        return (0,_generate_equivalents_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
+        return (0,_generate_equivalents_js__WEBPACK_IMPORTED_MODULE_4__["default"])({
           ...(0,_get_metrics_js__WEBPACK_IMPORTED_MODULE_3__["default"])({
             ...state,
             ...action.payload
@@ -105,227 +225,28 @@ const screensaverWait = 3000;
           showCircles: showCirclesRef.current
         });
       case "CALCULATE_TRANSITION":
-        {
-          const {
-            X,
-            Y
-          } = state.locus;
-          const [x, y] = (0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_4__["default"])(state.toCoordinates)([X, Y]);
-          const cell = [Math.floor(x), Math.floor(y)];
-          const stateBeforeTransition = (0,_get_metrics_js__WEBPACK_IMPORTED_MODULE_3__["default"])({
-            ...state,
-            ...(0,_get_transition_details_js__WEBPACK_IMPORTED_MODULE_10__["default"])({
-              planeGroup1: state.currentPlaneGroup,
-              planeGroup2: state.nextPlaneGroup,
-              progress: -1E-10
-            }) // theta and aspect
-          });
-          // generate transition points in this cell
-          const transitionPoints = state.nextPlaneGroup.positions.map(([a, b]) => {
-            // note positions is in the coordinate frame of currentPlaneGroup
-            const [x, y] = (0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_4__["default"])(stateBeforeTransition.fromCoordinates)([cell[0] + a, cell[1] + b]);
-            const diffX = X - x;
-            const diffY = Y - y;
-            return [diffX * diffX + diffY * diffY, [x, y]];
-          }).sort(([a], [b]) => a - b);
-          const transitionPoint = transitionPoints[0][1];
-          const stateAfterTransition = (0,_get_metrics_js__WEBPACK_IMPORTED_MODULE_3__["default"])({
-            ...state,
-            ...(0,_get_transition_details_js__WEBPACK_IMPORTED_MODULE_10__["default"])({
-              planeGroup1: state.currentPlaneGroup,
-              planeGroup2: state.nextPlaneGroup,
-              progress: 0
-            }),
-            // theta and aspect
-            currentPlaneGroup: state.nextPlaneGroup,
-            flipped: state.nextPlaneGroup.flipped
-          });
-          // find all the points just before transition within bounding box of new unit cell
-          const {
-            equivalents
-          } = (0,_generate_equivalents_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
-            ...stateBeforeTransition,
-            showCircles: true,
-            locus: {
-              X: transitionPoint[0],
-              Y: transitionPoint[1]
-            }
-          });
-          const currentMultiplicity = _plane_groups_js__WEBPACK_IMPORTED_MODULE_11__["default"][state.currentPlaneGroup.planeGroup].equivalents.length;
-          const {
-            xl,
-            xr,
-            yt,
-            yb
-          } = stateAfterTransition.getUnitCellBoundingBox();
-          const pointsInNewCell = equivalents.map((position, index) => ({
-            position,
-            mapping: index % currentMultiplicity
-          })).filter(({
-            position: [X, Y]
-          }) => X > xl - 1 && X < xr + 1 && Y > yt - 1 && Y < yb + 1);
-          // find symmetry equivalents in new cell to calculate mappings
-          const transitionCoordinate = (0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_4__["default"])(stateAfterTransition.toCoordinates)(transitionPoint).map(_rebase_coordinate_js__WEBPACK_IMPORTED_MODULE_12__["default"]);
-          const symmetryEquivalents = _plane_groups_js__WEBPACK_IMPORTED_MODULE_11__["default"][state.nextPlaneGroup.planeGroup].equivalents.map(transform => (0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_4__["default"])(transform)(transitionCoordinate).map(_rebase_coordinate_js__WEBPACK_IMPORTED_MODULE_12__["default"])).map((0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_4__["default"])(stateAfterTransition.fromCoordinates));
-          // match positions against currentPlaneGroup equivalents
-          const mappings = symmetryEquivalents.map(([X, Y]) => {
-            const equivalent = pointsInNewCell.find(({
-              position
-            }) => Math.abs(position[0] - X) < 1 && Math.abs(position[1] - Y) < 1);
-            return equivalent.mapping;
-          });
-          // mirror configuration detection
-          const {
-            activeMirrors,
-            mirrorConfiguration
-          } = (() => {
-            const mirrors = state.nextPlaneGroup.mirrors;
-            if (!mirrors) return {};
-            const stateAtEnd = (0,_get_metrics_js__WEBPACK_IMPORTED_MODULE_3__["default"])({
-              ...state,
-              ...(0,_get_transition_details_js__WEBPACK_IMPORTED_MODULE_10__["default"])({
-                planeGroup1: state.currentPlaneGroup,
-                planeGroup2: state.nextPlaneGroup,
-                progress: 1
-              }),
-              // theta and aspect
-              currentPlaneGroup: state.nextPlaneGroup,
-              flipped: state.nextPlaneGroup.flipped
-            });
-            const activeMirrors = mirrors.map(points => points.map(([x, y]) => (0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_4__["default"])(stateAtEnd.fromCoordinates)([x + cell[0], y + cell[1]])));
-            const mirrorConfiguration = activeMirrors.map((0,_get_angle_between_points_js__WEBPACK_IMPORTED_MODULE_14__["default"])([X, Y]));
-            return {
-              activeMirrors,
-              mirrorConfiguration
-            };
-          })();
-          const nextPlaneGroup = {
-            ...state.nextPlaneGroup,
-            mappings,
-            activeMirrors,
-            mirrorConfiguration,
-            ...(currentMultiplicity === mappings.length ? {
-              lchs: mappings.map(index => state.currentPlaneGroup.lchs[index])
-            } : {})
-          };
-          return {
-            ...state,
-            transitionPoint,
-            transitionStart: {
-              ms: Date.now(),
-              locus: state.locus
-            },
-            nextPlaneGroup
-          };
-        }
+        return (0,_calculate_transition_js__WEBPACK_IMPORTED_MODULE_9__["default"])(state);
       case "ANIMATE":
-        {
-          const ms = Date.now();
-          if (state.transitionStart) {
-            const offset = ms - state.transitionStart.ms;
-            const progress = Math.min(offset / transitionDuration * 2 - 1, 1);
-            const magProgress = Math.abs(progress);
-            const locus = {
-              X: state.transitionStart.locus.X * magProgress + state.transitionPoint[0] * (1 - magProgress),
-              Y: state.transitionStart.locus.Y * magProgress + state.transitionPoint[1] * (1 - magProgress)
-            };
-            const planeGroup1 = state.previousPlaneGroup || state.currentPlaneGroup;
-            const planeGroup2 = state.nextPlaneGroup || state.currentPlaneGroup;
-            const transitionDetails = (0,_get_transition_details_js__WEBPACK_IMPORTED_MODULE_10__["default"])({
-              planeGroup1,
-              planeGroup2,
-              progress
-            });
-            const lchs = (0,_get_lchs_js__WEBPACK_IMPORTED_MODULE_13__["default"])({
-              planeGroup1,
-              planeGroup2,
-              progress
-            });
-            const updatedState = {
-              ...state,
-              locus,
-              lastLocusUpdate: ms,
-              ...transitionDetails,
-              lchs,
-              ...(progress > 0 && !state.previousPlaneGroup ? {
-                previousPlaneGroups: {
-                  ...state.previousPlaneGroups,
-                  [state.currentPlaneGroup.planeGroup]: (state.previousPlaneGroups[state.currentPlaneGroup.planeGroup] || 0) + 1
-                },
-                previousPlaneGroup: state.currentPlaneGroup,
-                currentPlaneGroup: state.nextPlaneGroup,
-                flipped: state.nextPlaneGroup.flipped,
-                mirrors: state.nextPlaneGroup.mirrors,
-                mirrorConfiguration: state.nextPlaneGroup.mirrorConfiguration,
-                nextPlaneGroup: undefined
-              } : {}),
-              ...(progress === 1 ? (() => {
-                const currentPlaneGroup = {
-                  ...state.currentPlaneGroup,
-                  lchs
-                };
-                return {
-                  transitionStart: undefined,
-                  previousPlaneGroup: undefined,
-                  nextPlaneGroup: (0,_choose_next_plane_group_js__WEBPACK_IMPORTED_MODULE_6__["default"])({
-                    currentPlaneGroup,
-                    previousPlaneGroups: state.previousPlaneGroups
-                  }),
-                  currentPlaneGroup
-                };
-              })() : {})
-            };
-            const metrics = (0,_get_metrics_js__WEBPACK_IMPORTED_MODULE_3__["default"])(updatedState);
-            return (0,_generate_equivalents_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
-              ...metrics,
-              showCircles: showCirclesRef.current
-            });
-          } else {
-            // if in screensaver mode, perturb the target
-            if (locusVelocity.current) (() => {
-              const newVelocity = locusVelocity.current.map(velocity => velocity + 0.2 * (Math.random() - 0.5) - 0.01 * velocity);
-              const newTarget = {
-                X: targetRef.current.X + locusVelocity.current[0],
-                Y: targetRef.current.Y + locusVelocity.current[1]
-              };
-
-              // if there are mirrors in operation, check if we've crossed a mirror - and if so, clear screensaver velocity and don't apply it
-              const {
-                activeMirrors,
-                mirrorConfiguration
-              } = state.currentPlaneGroup;
-              if (activeMirrors) {
-                const newMirrorConfiguration = activeMirrors.map((0,_get_angle_between_points_js__WEBPACK_IMPORTED_MODULE_14__["default"])([newTarget.X, newTarget.Y]));
-                if (!mirrorConfiguration.every((config, index) => config === newMirrorConfiguration[index])) {
-                  locusVelocity.current = [0, 0];
-                  return;
-                }
-              }
-              locusVelocity.current = newVelocity;
-              targetRef.current = newTarget;
-            })();
-            return (0,_apply_animation_js__WEBPACK_IMPORTED_MODULE_9__["default"])({
-              state,
-              attractor: targetRef.current,
-              ms,
-              showCircles: showCirclesRef.current
-            });
-          }
-        }
+        return (0,_animate_js__WEBPACK_IMPORTED_MODULE_10__["default"])({
+          state,
+          showCirclesRef,
+          locusVelocityRef,
+          targetRef
+        });
     }
     return state;
   }, undefined, () => {
     const currentPlaneGroup = {
       planeGroup: "p1",
-      theta: (0,_get_theta_js__WEBPACK_IMPORTED_MODULE_7__["default"])("p1"),
-      aspect: (0,_get_aspect_js__WEBPACK_IMPORTED_MODULE_8__["default"])("p1"),
+      theta: (0,_get_theta_js__WEBPACK_IMPORTED_MODULE_6__["default"])("p1"),
+      aspect: (0,_get_aspect_js__WEBPACK_IMPORTED_MODULE_7__["default"])("p1"),
       lchs: [{}]
     }; // dummy mappings to check cell arity
     // const currentPlaneGroup = {planeGroup: "p3", theta: getTheta("p3"), aspect: getAspect("p3"), lchs: [{h: -1}, {h : 0}, {h : 1}], flipped: true};
     // const currentPlaneGroup = {planeGroup: "p6", theta: getTheta("p6"), aspect: getAspect("p6"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true}
     // const currentPlaneGroup = {planeGroup: "p31m", theta: getTheta("p31m"), aspect: getAspect("p31m"), lchs: [{l: -1, h: -1}, {l: -1, h: 0}, {l: -1, h: 1}, {l: 1, h: -1}, {l: 1, h: 0}, {l: 1, h: 1}], flipped: true};
 
-    return (0,_generate_equivalents_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
+    return (0,_generate_equivalents_js__WEBPACK_IMPORTED_MODULE_4__["default"])({
       ...(0,_get_metrics_js__WEBPACK_IMPORTED_MODULE_3__["default"])({
         width: window.innerWidth,
         height: window.innerHeight,
@@ -337,7 +258,7 @@ const screensaverWait = 3000;
           Y: window.innerHeight / 2
         },
         currentPlaneGroup,
-        nextPlaneGroup: (0,_choose_next_plane_group_js__WEBPACK_IMPORTED_MODULE_6__["default"])({
+        nextPlaneGroup: (0,_choose_next_plane_group_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
           currentPlaneGroup,
           previousPlaneGroups: {}
         }),
@@ -375,7 +296,7 @@ const screensaverWait = 3000;
     }), cycleDuration); // 7sec transition period
 
     // keypress toggle of view
-    const handleKeyPress = e => showCirclesRef.current = !showCirclesRef.current;
+    const handleKeyPress = () => showCirclesRef.current = !showCirclesRef.current;
     window.addEventListener("keydown", handleKeyPress);
 
     // initialize screensaver timeout
@@ -397,7 +318,7 @@ const screensaverWait = 3000;
   }, [locus, transitionPoint]); // run every time we set a new locus or apply transition
 
   const delta = windowSize[flipped ? "width" : "height"] / 2 * Math.tan(theta);
-  const cellArity = _plane_groups_js__WEBPACK_IMPORTED_MODULE_11__["default"][currentPlaneGroup.planeGroup].equivalents.length;
+  const cellArity = _plane_groups_js__WEBPACK_IMPORTED_MODULE_8__["default"][currentPlaneGroup.planeGroup].equivalents.length;
   return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement((react__WEBPACK_IMPORTED_MODULE_0___default().Fragment), null, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement(react_konva__WEBPACK_IMPORTED_MODULE_1__.Stage, {
     width: windowSize.width,
     height: windowSize.height,
@@ -406,7 +327,7 @@ const screensaverWait = 3000;
         X: e.evt.clientX,
         Y: e.evt.clientY
       };
-      locusVelocity.current = undefined;
+      locusVelocityRef.current = undefined;
       resetScreensaverTimer();
     }
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement(react_konva__WEBPACK_IMPORTED_MODULE_1__.Layer, null, (() => {
@@ -496,6 +417,146 @@ const timeToSync = 200; //ms
     lastLocusUpdate: ms,
     showCircles
   });
+});
+
+/***/ }),
+
+/***/ "./src/calculate-transition.js":
+/*!*************************************!*\
+  !*** ./src/calculate-transition.js ***!
+  \*************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/* harmony import */ var _transform_vector_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./transform-vector.js */ "./src/transform-vector.js");
+/* harmony import */ var _get_metrics_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./get-metrics.js */ "./src/get-metrics.js");
+/* harmony import */ var _get_transition_details_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./get-transition-details.js */ "./src/get-transition-details.js");
+/* harmony import */ var _generate_equivalents_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./generate-equivalents.js */ "./src/generate-equivalents.js");
+/* harmony import */ var _rebase_coordinate_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./rebase-coordinate.js */ "./src/rebase-coordinate.js");
+/* harmony import */ var _get_angle_between_points_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./get-angle-between-points.js */ "./src/get-angle-between-points.js");
+/* harmony import */ var _plane_groups_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./plane-groups.js */ "./src/plane-groups.js");
+
+
+
+
+
+
+
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (state => {
+  const {
+    X,
+    Y
+  } = state.locus;
+  const [x, y] = (0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_0__["default"])(state.toCoordinates)([X, Y]);
+  const cell = [Math.floor(x), Math.floor(y)];
+  const stateBeforeTransition = (0,_get_metrics_js__WEBPACK_IMPORTED_MODULE_1__["default"])({
+    ...state,
+    ...(0,_get_transition_details_js__WEBPACK_IMPORTED_MODULE_2__["default"])({
+      planeGroup1: state.currentPlaneGroup,
+      planeGroup2: state.nextPlaneGroup,
+      progress: -1E-10
+    }) // theta and aspect
+  });
+  // generate transition points in this cell
+  const transitionPoints = state.nextPlaneGroup.positions.map(([a, b]) => {
+    // note positions is in the coordinate frame of currentPlaneGroup
+    const [x, y] = (0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_0__["default"])(stateBeforeTransition.fromCoordinates)([cell[0] + a, cell[1] + b]);
+    const diffX = X - x;
+    const diffY = Y - y;
+    return [diffX * diffX + diffY * diffY, [x, y]];
+  }).sort(([a], [b]) => a - b);
+  const transitionPoint = transitionPoints[0][1];
+  const stateAfterTransition = (0,_get_metrics_js__WEBPACK_IMPORTED_MODULE_1__["default"])({
+    ...state,
+    ...(0,_get_transition_details_js__WEBPACK_IMPORTED_MODULE_2__["default"])({
+      planeGroup1: state.currentPlaneGroup,
+      planeGroup2: state.nextPlaneGroup,
+      progress: 0
+    }),
+    // theta and aspect
+    currentPlaneGroup: state.nextPlaneGroup,
+    flipped: state.nextPlaneGroup.flipped
+  });
+  // find all the points just before transition within bounding box of new unit cell
+  const {
+    equivalents
+  } = (0,_generate_equivalents_js__WEBPACK_IMPORTED_MODULE_3__["default"])({
+    ...stateBeforeTransition,
+    showCircles: true,
+    locus: {
+      X: transitionPoint[0],
+      Y: transitionPoint[1]
+    }
+  });
+  const currentMultiplicity = _plane_groups_js__WEBPACK_IMPORTED_MODULE_6__["default"][state.currentPlaneGroup.planeGroup].equivalents.length;
+  const {
+    xl,
+    xr,
+    yt,
+    yb
+  } = stateAfterTransition.getUnitCellBoundingBox();
+  const pointsInNewCell = equivalents.map((position, index) => ({
+    position,
+    mapping: index % currentMultiplicity
+  })).filter(({
+    position: [X, Y]
+  }) => X > xl - 1 && X < xr + 1 && Y > yt - 1 && Y < yb + 1);
+  // find symmetry equivalents in new cell to calculate mappings
+  const transitionCoordinate = (0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_0__["default"])(stateAfterTransition.toCoordinates)(transitionPoint).map(_rebase_coordinate_js__WEBPACK_IMPORTED_MODULE_4__["default"]);
+  const symmetryEquivalents = _plane_groups_js__WEBPACK_IMPORTED_MODULE_6__["default"][state.nextPlaneGroup.planeGroup].equivalents.map(transform => (0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_0__["default"])(transform)(transitionCoordinate).map(_rebase_coordinate_js__WEBPACK_IMPORTED_MODULE_4__["default"])).map((0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_0__["default"])(stateAfterTransition.fromCoordinates));
+  // match positions against currentPlaneGroup equivalents
+  const mappings = symmetryEquivalents.map(([X, Y]) => {
+    const equivalent = pointsInNewCell.find(({
+      position
+    }) => Math.abs(position[0] - X) < 1 && Math.abs(position[1] - Y) < 1);
+    return equivalent.mapping;
+  });
+  // mirror configuration detection
+  const {
+    activeMirrors,
+    mirrorConfiguration
+  } = (() => {
+    const mirrors = state.nextPlaneGroup.mirrors;
+    if (!mirrors) return {};
+    const stateAtEnd = (0,_get_metrics_js__WEBPACK_IMPORTED_MODULE_1__["default"])({
+      ...state,
+      ...(0,_get_transition_details_js__WEBPACK_IMPORTED_MODULE_2__["default"])({
+        planeGroup1: state.currentPlaneGroup,
+        planeGroup2: state.nextPlaneGroup,
+        progress: 1
+      }),
+      // theta and aspect
+      currentPlaneGroup: state.nextPlaneGroup,
+      flipped: state.nextPlaneGroup.flipped
+    });
+    const activeMirrors = mirrors.map(points => points.map(([x, y]) => (0,_transform_vector_js__WEBPACK_IMPORTED_MODULE_0__["default"])(stateAtEnd.fromCoordinates)([x + cell[0], y + cell[1]])));
+    const mirrorConfiguration = activeMirrors.map((0,_get_angle_between_points_js__WEBPACK_IMPORTED_MODULE_5__["default"])([X, Y]));
+    return {
+      activeMirrors,
+      mirrorConfiguration
+    };
+  })();
+  const nextPlaneGroup = {
+    ...state.nextPlaneGroup,
+    mappings,
+    activeMirrors,
+    mirrorConfiguration,
+    ...(currentMultiplicity === mappings.length ? {
+      lchs: mappings.map(index => state.currentPlaneGroup.lchs[index])
+    } : {})
+  };
+  return {
+    ...state,
+    transitionPoint,
+    transitionStart: {
+      ms: Date.now(),
+      locus: state.locus
+    },
+    nextPlaneGroup
+  };
 });
 
 /***/ }),
@@ -1247,6 +1308,27 @@ const noTransition = ({
       getPositions: () => [[1 / 3, 0], [2 / 3, 0], [0, 1 / 3], [0, 2 / 3], [1 / 3, 1 / 3], [2 / 3, 2 / 3]],
       getTheta: interpolateAfterTransition,
       getAspect: interpolateAfterTransition
+    } /*, {
+      planeGroup: "p6mm",
+      getPositions: () => [[0.5, 0], [0, 0.5], [0.5, 0.5]],
+      getTheta: noTransition,
+      getAspect: noTransition,
+      newCell: [2, 2],
+      targetPositions: [[0.5, 0.125], [0.125, 0.5], [0.625, 0.5], [0.625, 0.125], [0.5, 0.375], [0.875, 0.375], [0.375, 0.5], [0.125, 0.625], [0.375, 0.875], [0.875, 0.5], [0.5, 0.875], [0.5, 0.625]],
+      }*/]
+  },
+
+  p6mm: {
+    equivalents: [[1, 0, 0, 0, 1, 0, 0, 0, 1], [0, -1, 0, 1, -1, 0, 0, 0, 1], [-1, 1, 0, -1, 0, 0, 0, 0, 1], [-1, 0, 0, 0, -1, 0, 0, 0, 1], [0, 1, 0, -1, 1, 0, 0, 0, 1], [1, -1, 0, 1, 0, 0, 0, 0, 1], [0, -1, 0, -1, 0, 0, 0, 0, 1], [-1, 1, 0, 0, 1, 0, 0, 0, 1], [1, 0, 0, 1, -1, 0, 0, 0, 1], [0, 1, 0, 1, 0, 0, 0, 0, 1], [1, -1, 0, 0, -1, 0, 0, 0, 1], [-1, 0, 0, -1, 1, 0, 0, 0, 1]],
+    mirrors: [[[1, 0], [0, 0]], [[1, 0], [1, 1]], [[0, 1], [0, 0]], [[0, 1], [1, 1]], [[1, 1], [0, 0]], [[1, 0], [0, 1]], [[1, 0.5], [0, 0]], [[0, 0.5], [1, 1]], [[0.5, 0], [1, 1]], [[0.5, 1], [0, 0]]],
+    flipped: true,
+    transitions: [{
+      planeGroup: "p3",
+      getPositions: () => [[0.5, 0.125], [0.125, 0.5], [0.625, 0.5], [0.625, 0.125], [0.5, 0.375], [0.875, 0.375], [0.375, 0.5], [0.125, 0.625], [0.375, 0.875], [0.875, 0.5], [0.5, 0.875], [0.5, 0.625]],
+      getTheta: noTransition,
+      getAspect: noTransition,
+      newCell: [0.5, 0.5],
+      targetPositions: [[0.5, 0], [0, 0.5], [0.5, 0.5]]
     }]
   },
   p6: {
