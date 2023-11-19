@@ -10,7 +10,7 @@ import planeGroups from "./plane-groups.js";
 import {useDebouncedCallback} from "use-debounce";
 import calculateTransition from "./calculate-transition.js";
 import animate from "./animate.js";
-
+ 
 const screensaverWait = 3000;
 const cycleDuration = 7000;
 
