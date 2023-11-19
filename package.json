@@ -1,5 +1,5 @@
 {
-	"name": "mosaica",
+	"name": "monotile",
 	"version": "1.0.0",
 	"description": "",
 	"main": "index.js",
@@ -10,15 +10,15 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/dwsmorris/mosaica.git"
+		"url": "git+https://github.com/dwsmorris/monotile.git"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
 	"bugs": {
-		"url": "https://github.com/dwsmorris/mosaica/issues"
+		"url": "https://github.com/dwsmorris/monotile/issues"
 	},
-	"homepage": "https://github.com/dwsmorris/mosaica#readme",
+	"homepage": "https://github.com/dwsmorris/monotile#readme",
 	"dependencies": {
 		"konva": "^9.2.0",
 		"react": "^18.2.0",
